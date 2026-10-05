@@ -1,0 +1,4 @@
+interface:
+  display_name: "模块修改与交接"
+  short_description: "定位模块与关联影响，确认修改方案，保存版本历史并衔接验收证据"
+  default_prompt: "使用 $module-change-workflow 管理这个项目的模块、修改方案与历史，先给方案，等我确认后实施。"
