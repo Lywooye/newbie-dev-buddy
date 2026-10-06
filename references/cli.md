@@ -1,62 +1,61 @@
 # CLI 契约与合成示例
 
-工具为 `scripts/module_change.py`，仅依赖 Python 3.9 及以上版本的标准库。下列示例从 Skill 目录调用，项目、输入文件和变更内容均为合成材料。真实工作中替换成当前项目及已核对的内容。
+工具为 `scripts/module_change.py`，核心仅依赖 Python 3.9 及以上标准库。命令从 Skill 源目录调用；示例项目和内容均为合成材料。SHA、扫描文件名和版本号是参数角色示例，实际值从命令返回取得。
 
-成功命令在 stdout 返回 JSON，参数或前置条件错误在 stderr 返回 JSON 并以退出码 1 结束。`verify` 核对失败或凭据过期时仍保存真实结果，在 stdout 返回 `ok: false` 并以退出码 2 结束。按返回内容及退出码判断，不以出现某个关键词代替成功检查。不假设所有命令具有相同的返回字段。
+`map-json`、`spec-json` 是传输材料，建议放在项目 `.handoff/module-change/inputs/` 或项目外临时目录，再用正确的调用路径读取。不要把这些生成文件写进正在扫描或验收的源码目录，以免使扫描自己过期。权威内容仍为 `MODULES.md` 和已保存的版本 Markdown。
+
+成功命令在 stdout 返回 JSON；参数或前置条件错误在 stderr 返回 JSON，退出码为 1。已完成但失败或过期的验收记录返回 `ok: false`，退出码为 2。按 JSON 和退出码判断，不只看关键词，不假定所有命令返回相同字段。
 
 ## 命令
 
 | 命令 | 必需参数 | 用途 |
 |---|---|---|
-| `init` | `--project P --map-json FILE --decision-note-file FILE` | 保存用户已接受的初始模块结构及决策说明 |
-| `propose` | `--project P --spec-json FILE` | 保存候选方案；自动分配该变更的新修订号 |
-| `decide` | `--project P --change C --revision N --decision accept\|reject --expect-digest SHA --note-file FILE` | 校验候选并记录接受或拒绝 |
+| `scan` | `--project P` | 保存结构清单；可重复 `--exclude PATH_OR_GLOB`，可设 `--max-bytes N` |
+| `map-propose` | `--project P --scan SCAN_REL_PATH --map-json FILE` | 保存绑定扫描与旧图的地图候选；可附 `--lineage-json FILE` |
+| `map-decide` | `--project P --revision N --expect-digest SHA --decision accept\|reject --note-file FILE` | 接受或拒绝地图候选，保留结构历史 |
+| `init` | `--project P --map-json FILE --decision-note-file FILE` | 兼容入口：保存已接受的初始模块结构 |
+| `propose` | `--project P --spec-json FILE` | 保存修改候选及冻结验证计划，分配新修订号 |
+| `decide` | `--project P --change C --revision N --decision accept\|reject --expect-digest SHA --note-file FILE` | 校验修改候选并保存决定 |
 | `record` | `--project P --change C --revision N --expect-digest SHA --event started\|implemented\|interrupted --note-file FILE` | 对已接受版本记录实施事件 |
-| `verify` | `--project P --change C --revision N --expect-digest SHA --kit KIT_DIR --receipt REPORT_PATH` | 调用 Acceptance Kit `check`，登记真实报告的核对结果 |
-| `status` | `--project P` | 只读当前状态；比较内容指纹 |
-| `refresh` | `--project P` | 重建派生的 `CURRENT.md` 索引 |
+| `run-checks` | `--project P --change C --revision N --expect-digest SHA --kit KIT_DIR --check-id ID` | 实际运行选中 Kit 配置并核对结果；可重复 `--check-id` |
+| `verify` | `--project P --change C --revision N --expect-digest SHA --kit KIT_DIR --receipt REPORT_PATH` | 核对既有报告；可加 `--check-id ID` 绑定具体冻结检查 |
+| `status` | `--project P` | 只读状态与本地内容指纹，不运行 Kit |
+| `refresh` | `--project P` | 重建派生导航索引，不重新梳理代码 |
 
-`decide` 的 SHA 对应待决策候选的完整 Markdown。接受后返回 `accepted_digest`；`status.accepted[*].digest` 返回已接受变更的 digest。`record` 与 `verify` 使用这个已接受版本的完整 Markdown SHA，不假定接受前后 digest 相同。手工改写已接受版本后，原 digest 不再代表当前内容，须核查并按修订流程处理。
+`scan` 默认单文件上限为 262144 字节（256 KiB），当前需要 macOS/Linux 安全目录相对读取。Python 可提取 AST 符号与导入，其他语言只有清单；动态导入、运行时调用和排除项内容不在覆盖内。它不运行代码，不自动生成业务模块。`map-propose` 使用该清单和经源码核对的人工或 AI 分组结果；详细方法见 [discovery.md](discovery.md)。扫描文件及报告路径相对项目根解析；`--kit` 是可信外部 Kit 目录。
 
-`decide` 接受前校验方案 digest、最新修订号及项目基线。失败时核对差异和用户接受范围；不能仅替换 digest 绕过旧版本或基线变化。
+`map-decide` 与 `decide` 的 SHA 对应待决策候选的完整 Markdown。接受修改后返回 `accepted_digest`，`record`、`run-checks` 和 `verify` 使用已接受版本的 digest，不能假定接受前后相同。手工改写后不能只换 digest 当作原来已接受。
 
-`verify --receipt` 指向项目内实际的 Kit JSON 报告；相对路径按 `--project` 项目根解析，也支持项目内绝对路径。`--kit` 指向真实的 Acceptance Kit 目录。执行它之前，先使用该 Kit 的文档和项目已有流程运行实际验收。`verify` 不替代那一步。
-
-通过需要真实报告的 `status` 为 `passed`，且 Kit `check` 返回 `current: true`、`issues: []`。`status` 不调用 Kit 重验；它显示历史结果、输入与报告文件的指纹，并提示 `receipt_recheck_required: true`。沿用验收结论前再次执行 `verify`。
-
-更高修订被接受或旧版被其他已接受方案通过 `supersedes` 替换后，旧版保留为历史，不能继续对其执行 `record` 或 `verify`。
+地图接受会校验扫描来源、旧图和最新候选；修改接受会校验方案 digest、最新修订和项目基线。遇到漂移先核对变化，必要时重新扫描、提出候选并确认。
 
 ## 模块输入 `map-json`
 
-根对象字段：
-
-| 字段 | 类型 | 含义 |
+| 根字段 | 类型 | 含义 |
 |---|---|---|
-| `title` | 字符串 | 项目模块总览标题 |
-| `context` | 可选字符串数组 | 项目上下文文件的相对路径 |
-| `modules` | 模块对象数组 | 已接受的模块结构 |
+| `title` | 字符串 | 总览标题 |
+| `context` | 可选字符串数组 | 项目内上下文相对路径 |
+| `modules` | 非空对象数组 | 模块结构 |
+| `verification_defaults` | 可选对象 | 默认检查策略，如 `{"policy":"manual"}` |
+| `integration_checks` | 可选对象数组 | 跨模块检查 |
 
-每个模块的字段：
-
-| 字段 | 类型 | 含义 |
+| 模块字段 | 类型 | 含义 |
 |---|---|---|
-| `id` | 字符串 | 稳定模块 ID，如 `M-EXPORT` |
-| `name` | 字符串 | 可读模块名称 |
-| `purpose` | 字符串 | 模块职责 |
-| `paths` | 字符串数组 | 相对项目根的文件或目录路径；新项目允许路径尚未存在 |
-| `depends_on` | 字符串数组 | 此模块依赖的其他模块 ID；无依赖用空数组 |
-| `contract` | Markdown 字符串 | 接口、行为与数据约定 |
+| `id` | 字符串 | 稳定 ID，如 `M-EXPORT` |
+| `name`、`purpose` | 字符串 | 名称与职责 |
+| `paths` | 非空字符串数组 | 项目内文件或目录相对路径；新项目允许尚未存在 |
+| `depends_on` | 字符串数组 | 当前模块依赖的其他 ID；无依赖用空数组 |
+| `contract` | Markdown 字符串 | 接口、行为及数据约定 |
+| `verification` | 可选对象 | 本模块策略及 Kit 配置引用 |
 
-路径应保持项目内相对路径，不把个人目录、凭据或机器信息放进可分享材料。依赖项应引用当前模块总览中的稳定 ID。
+`verification.policy` 为 `manual`、`on-change` 或 `required`。集成项至少引用两个已知模块，策略只能为 `on-change` 或 `required`；检查项和步骤 ID 使用小写字母、数字及连字符。未设时继承项目默认策略；无默认时使用手动策略。有 `config` 时还需非空 `steps` 和 `inputs`。有配置时，配置、声明输入和相关模块源码必须先存在且未被排除；新测试先准备，再运行 `propose`。这些路径必须在项目内；配置使用 Kit 自己的格式，需排除 `.handoff/module-change/` 或整个 `.handoff`，工具不自动修改配置。
 
-项目内不支持软链接、硬链接或特殊文件（如 FIFO）。生成的交接索引使用相对链接，移动项目后仍可使用；用户输入的方案、说明及 Kit 结果仍可能含私密内容，工具不会自动匿名化这些材料。
-
-合成 `map.json`：
+合成地图：
 
 ```json
 {
-  "title": "合成表格导出项目",
+  "title": "合成导出项目",
   "context": ["docs/product.md"],
+  "verification_defaults": {"policy": "manual"},
   "modules": [
     {
       "id": "M-INGEST",
@@ -64,62 +63,97 @@
       "purpose": "读取 item_id 与 score 字段",
       "paths": ["src/ingest.py"],
       "depends_on": [],
-      "contract": "返回包含 item_id 和 score 的记录；保留输入记录顺序。"
+      "contract": "保留输入记录顺序。"
     },
     {
       "id": "M-EXPORT",
       "name": "表格导出",
-      "purpose": "把输入记录写入 CSV 文件",
+      "purpose": "把输入记录写入 CSV",
       "paths": ["src/export.py"],
       "depends_on": ["M-INGEST"],
-      "contract": "提供 export.write_table；使用 UTF-8；默认列顺序为 item_id、score。"
-    },
+      "contract": "export.write_table 使用 UTF-8，默认列为 item_id、score。",
+      "verification": {
+        "policy": "required",
+        "config": "checks/export.json",
+        "steps": ["export"],
+        "inputs": ["src/export.py", "tests/test_export.py"]
+      }
+    }
+  ],
+  "integration_checks": [
     {
-      "id": "M-CLI",
-      "name": "命令行入口",
-      "purpose": "接收文件路径并调用导出",
-      "paths": ["src/cli.py"],
-      "depends_on": ["M-EXPORT"],
-      "contract": "成功退出码为 0；--output 指定目标文件。"
+      "id": "ingest-export",
+      "modules": ["M-INGEST", "M-EXPORT"],
+      "policy": "on-change",
+      "config": "checks/integration.json",
+      "steps": ["ingest-export"],
+      "inputs": ["src", "tests/test_integration.py"]
     }
   ]
 }
 ```
 
-结构已经向用户展示并获得接受后，把明确的决策说明写入 `decision.md`，再运行：
+这是本工具的地图格式，不能直接当作 Kit 配置。先准备真实配置和测试；无 Kit 或无配置时省略 `config`、`steps`、`inputs`，并如实保留未配置状态。策略不产生测试，也不证明覆盖。
+
+项目内不支持软链接、硬链接或特殊文件，如 FIFO。相对路径避免记录机器根目录，但输入与 Kit 结果仍可能包含私密信息；工具不自动匿名化。
+
+## 扫描、地图候选与接受
 
 ```sh
-python3 scripts/module_change.py init --project ./sample-project --map-json ./map.json --decision-note-file ./decision.md
+python3 scripts/module_change.py scan --project ./sample-project --exclude private --max-bytes 1048576
 ```
 
-这里的决策说明是执行者对已发生确认的记录；把文件命名为 `decision.md` 不能自行产生用户授权。
+读取返回的扫描 Markdown 和覆盖记录，结合源码准备 `map.json`。下列 `S-SCAN.md` 是占位名，替换为实际返回路径：
 
-## 方案输入 `spec-json`
+```sh
+python3 scripts/module_change.py map-propose --project ./sample-project --scan .handoff/module-change/discovery/S-SCAN.md --map-json ./map.json
+```
+
+读取完整候选，再展示并确认。用户接受该版本后，保存确认范围到 `map-note.md`：
+
+```sh
+python3 scripts/module_change.py map-decide --project ./sample-project --revision MAP_REVISION --expect-digest MAP_CANDIDATE_SHA --decision accept --note-file ./map-note.md
+```
+
+首次接受建立总览；后续接受保留旧地图并更新当前图。拒绝用 `--decision reject` 并保存理由。移除旧 ID 时，`--lineage-json` 文件使用数组：
+
+```json
+[
+  {"from": ["M-OLD"], "to": ["M-NEW"], "reason": "职责迁移到新的边界"}
+]
+```
+
+拆分可有多个 `to`，合并可有多个 `from`；退休用空 `to`。改名或移动路径保留原 ID，不要重新编号。
+
+已有已确认结构仍可首次初始化：
+
+```sh
+python3 scripts/module_change.py init --project ./sample-project --map-json ./map.json --decision-note-file ./map-note.md
+```
+
+这不替代实际确认；已初始化项目使用地图修订，不重跑 `init` 覆盖历史。
+
+## 修改输入 `spec-json`
 
 | 字段 | 类型 | 含义 |
 |---|---|---|
-| `id` | 字符串 | 稳定变更 ID，如 `C-001`；相同 ID 再次提出会生成新修订 |
-| `title` | 字符串 | 本次变更标题 |
+| `id`、`title` | 字符串 | 稳定变更 ID 与标题 |
 | `primary` | 字符串 | 主模块 ID |
-| `affected` | 字符串数组 | 其他受影响模块 ID；无关联变化用空数组 |
-| `location` | 字符串 | 稳定功能或接口名称 |
-| `plan` | Markdown 字符串 | 本次完整方案正文 |
-| `acceptance` | Markdown 字符串 | 可观察的验收条件 |
-| `supersedes` | 可选对象数组 | 被替换的旧方案及范围 |
-
-`supersedes` 的每项包含 `change`（旧变更 ID）、`revision`（旧修订号）和 `scope`（被替换约束的具体范围）。它记录方案中的替换声明，不自动证明关联范围完整或代码已经按新方案实现。
-
-合成 `spec.json`：
+| `affected` | 字符串数组 | 其他受影响模块；无关联变化用空数组 |
+| `location` | 字符串 | 稳定功能或接口名 |
+| `plan` | Markdown 字符串 | 完整方案 |
+| `acceptance` | Markdown 字符串 | 可观察验收条件 |
+| `supersedes` | 可选对象数组 | 替换的旧方案，每项含 `change`、`revision`、`scope` |
 
 ```json
 {
   "id": "C-001",
   "title": "允许指定导出列顺序",
   "primary": "M-EXPORT",
-  "affected": ["M-CLI"],
+  "affected": [],
   "location": "export.write_table",
-  "plan": "为 write_table 增加可选 columns 参数，只接受 item_id 和 score 各一次。未指定时保留默认顺序。命令行新增 --columns，以逗号分隔两列。不改变输入读取或 UTF-8 编码。更新 M-EXPORT 与 M-CLI 的契约。",
-  "acceptance": "未指定 columns 时输出表头为 item_id,score；指定 score,item_id 时表头和每行数据都按该顺序写出；重复、遗漏或未知列返回明确错误，且不生成成功结果。"
+  "plan": "增加可选 columns 参数，仅允许 item_id 和 score 各一次。省略时保留原列顺序，并更新模块契约。",
+  "acceptance": "两种合法顺序的表头和数据一致；重复、遗漏、未知列返回明确错误。"
 }
 ```
 
@@ -127,58 +161,52 @@ python3 scripts/module_change.py init --project ./sample-project --map-json ./ma
 python3 scripts/module_change.py propose --project ./sample-project --spec-json ./spec.json
 ```
 
-`propose` 返回完整候选 Markdown 的 digest 和关系图给出的候选关联模块。读取返回文件，核对方案内容，再向用户展示该变更及修订号。修订输入应是完整的新方案，不是只包含一句修订意见的补丁。
+候选关联模块是核查线索。候选保存本次验证计划；检查 ID 包括 `module:M-EXPORT` 与 `integration:ingest-export`。来源、策略、配置与输入需在接受前核对。配置 SHA 和完整 JSON 内容已冻结，开始实施后更换命令须修订再确认，不在运行时偷偷改变。
 
-## 接受、实施与验收
+## 接受与实施
 
-下列 SHA 字符串只是说明参数角色，不能直接复制为有效 digest。实际 SHA 从对应命令结果或状态取得。
-
-用户接受 `C-001` 修订 1 后，把确认范围写入 `accept-note.md`：
+实际变更 ID、修订号和 digest 从命令结果取得。下列大写参数不能直接复制为有效值。
 
 ```sh
-python3 scripts/module_change.py decide --project ./sample-project --change C-001 --revision 1 --decision accept --expect-digest CANDIDATE_MD_SHA --note-file ./accept-note.md
+python3 scripts/module_change.py decide --project ./sample-project --change C-001 --revision REVISION --decision accept --expect-digest CANDIDATE_MD_SHA --note-file ./accept-note.md
+python3 scripts/module_change.py record --project ./sample-project --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA --event started --note-file ./start-note.md
 ```
 
-若用户拒绝，使用 `--decision reject` 并在 note 中保存拒绝理由。若用户修订，更新 `spec.json`，再次运行 `propose`，检查实际新修订号后重新展示。
-
-接受成功后读取已接受 Markdown 的 digest。修改代码前保存开始说明：
+完成实际代码与相关模块文档后：
 
 ```sh
-python3 scripts/module_change.py record --project ./sample-project --change C-001 --revision 1 --expect-digest ACCEPTED_MD_SHA --event started --note-file ./start-note.md
+python3 scripts/module_change.py record --project ./sample-project --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA --event implemented --note-file ./implementation-note.md
 ```
 
-源代码和模块契约都完成后保存实施说明：
+中断使用 `--event interrupted`，记录已改文件、当前行为、未完成部分及恢复步骤。更高修订被接受或旧版被 `supersedes` 替换后，旧版只供历史核对，不能继续实施或验收。
+
+## 实际检查与既有报告复核
+
+用户已选定检查或已确认策略授权运行后：
 
 ```sh
-python3 scripts/module_change.py record --project ./sample-project --change C-001 --revision 1 --expect-digest ACCEPTED_MD_SHA --event implemented --note-file ./implementation-note.md
+python3 scripts/module_change.py run-checks --project ./sample-project --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA --kit ./acceptance-kit --check-id module:M-EXPORT --check-id integration:ingest-export
 ```
 
-若中断，使用 `--event interrupted`，note 中记录已改文件、当前实际行为、未完成部分及恢复步骤。中断记录不表示实现已经撤回，也不表示变更已被拒绝。
+这会执行每份选中配置的全部 Kit 步骤，不是沙箱；地图 `steps` 字段指定必须通过的证明步骤，不筛选执行命令。先核对 Kit、配置和命令，完整流程见 [verification.md](verification.md)。
 
-先按真实 Kit 的文档运行项目验收，取得项目内报告，再核对：
+项目已有流程生成报告后，只复核相应检查：
 
 ```sh
-python3 scripts/module_change.py verify --project ./sample-project --change C-001 --revision 1 --expect-digest ACCEPTED_MD_SHA --kit ./acceptance-kit --receipt .acceptance/example-run/report.json
+python3 scripts/module_change.py verify --project ./sample-project --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA --kit ./acceptance-kit --receipt .acceptance/example-run/report.json --check-id module:M-EXPORT
 ```
 
-以上 receipt 路径相对 `sample-project` 项目根。不要自行构造一份具有 `passed` 状态的文件代替真实 Kit 报告。失败按实际结果保存，不改写为通过。
+报告路径相对项目根，也支持项目内绝对路径。必须是真实 Kit 报告。通过要求报告 `status` 为 `passed`，Kit `check` 返回 `current: true`、`issues: []`，且指定检查的配置、步骤与输入符合冻结计划。模块验收需至少一个 `tap` 或 `checks` 行为步骤提供非空证明，仅 `exit` 步骤不够；命令与输入匹配仍不是语义覆盖证明。
 
-## 状态与交接
+省略 `--check-id` 保留 v0.1.1 整体报告入口；整体报告通过不自动标记各模块通过。`verify` 不运行测试。`status` 不调用 Kit，显示历史结果、内容指纹及需复核提示；继续使用历史结论前再次 `verify`。
 
 ```sh
 python3 scripts/module_change.py status --project ./sample-project
-```
-
-`status` 只读比较内容指纹；它不会自行刷新索引、接受漂移或重新运行 Kit `check`。指纹变化需要查看具体修改、执行记录与方案的对应关系；历史验收结论需要 `verify` 重新核对。
-
-```sh
 python3 scripts/module_change.py refresh --project ./sample-project
 ```
 
-`refresh` 只用于派生状态索引。它不接受新方案，不核实用户同意，不代替实际实施或验收。对话中交接至少应给出当前模块、适用方案版本、实施状态、当前验收证据及下一步。
+状态以本次变更为单位显示各模块或集成检查。`delivery_ready` 只表示已配置必需检查的当前证据门槛；无必需规则也不等于整项目通过。`refresh` 只重建索引，不接受漂移、不运行扫描或 Kit。
 
-## 验收输入与工具限制
+## v0.1.1 兼容
 
-生成的 `.handoff/module-change/` 需要从 Acceptance Kit 输入中排除；不要排除全部 `docs/`。更新源代码及模块文档后重新运行 Kit；在报告生成后再改这些输入，会使报告不再代表当前内容。CLI 不自动修改项目的验收配置。
-
-候选关联模块是关系图提供的检查线索。工具不执行 Markdown 中的任意命令，不自动证明 AI 理解，也不能核实人类同意或阻止绕过 CLI 直接改文件。保存的阶段与事件用于可核对的工作记录，不能据此声称全部需求、影响或安全问题已获证明。
+旧版地图不需要补全验收字段才可读取；`init`、修改方案字段及原 `verify` 入口保持可用。新检查是可选能力。旧接受版本、路径范围和历史记录保持原样；地图更新不自动迁移旧方案或把旧报告升级成模块证据。

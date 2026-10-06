@@ -14,6 +14,9 @@ import tempfile
 import uuid
 from urllib.parse import quote
 
+from discovery import collect
+from verification import build_plan, check_coverage, config_for_check, profile_files, validate_settings
+
 
 DOCS = "docs/module-change"
 STATE = ".handoff/module-change"
@@ -123,6 +126,7 @@ def validate_map(data):
         dependencies = module.get("depends_on", [])
         require(isinstance(dependencies, list) and all(d in ids for d in dependencies), "unknown module dependency")
     require(isinstance(data.get("context", []), list), "context must be an array")
+    validate_settings(data)
 
 
 def module_map(root):
@@ -239,6 +243,45 @@ def event(root, data, kind, note, **extra):
     return path
 
 
+def verification_status(root, data, events):
+    plan = data.get("verification_plan", {"modules": [{"id": i, "policy": "manual", "configured": False}
+                                                    for i in [data["primary"]] + data["affected"]], "checks": []})
+    checks = []
+    for target in plan["checks"]:
+        runs = [e[0] for e in events if e[0].get("check_id") == target["id"] and e[0]["event"] == "verification"]
+        latest = max(runs, key=lambda e: e["sequence"], default=None)
+        item = {"id": target["id"], "modules": target["modules"], "policy": target["policy"], "state": "not_run"}
+        if latest:
+            receipt = safe(root, latest["receipt"])
+            current = not changed(latest["inputs"], current_inputs(root, data)) and receipt.is_file() and digest(receipt) == latest["receipt_digest"]
+            item.update(state="stale" if not current else "passed" if latest["result"] == "passed" else "failed",
+                        receipt=latest["receipt"], receipt_recheck_required=True,
+                        coverage_issues=latest.get("coverage_issues", []))
+        checks.append(item)
+    modules = []
+    for module in plan["modules"]:
+        relevant = [c for c in checks if module["id"] in c["modules"]]
+        states = [c["state"] for c in relevant]
+        state = "not_configured" if not module["configured"] else "not_run"
+        if "stale" in states:
+            state = "stale"
+        elif "failed" in states:
+            state = "failed"
+        elif states and all(s == "passed" for s in states) and module["configured"]:
+            state = "passed"
+        elif "passed" in states:
+            state = "partial"
+        modules.append({**module, "state": state})
+    required = [c for c in checks if c["policy"] == "required"]
+    required_modules = [m for m in modules if m["policy"] == "required"]
+    missing = [m["id"] for m in modules if m["policy"] == "required" and not m["configured"]]
+    ready = all(m["state"] == "passed" for m in required_modules) and all(c["state"] == "passed" for c in required) if required or required_modules else None
+    if ready and any(c["state"] in {"failed", "stale"} for c in checks):
+        ready = False
+    return {"modules": modules, "checks": checks, "delivery_ready": ready,
+            "missing_required": missing, "note": "Recorded checks only; recheck receipts before delivery. No required policy means no delivery gate."}
+
+
 def status(root):
     mapping = module_map(root)
     decisions, accepted_items = [], []
@@ -273,6 +316,7 @@ def status(root):
                 item.update(verification=check["result"], verification_input_changes=stale,
                             receipt=check["receipt"], receipt_file_current=receipt.is_file() and digest(receipt) == check["receipt_digest"],
                             receipt_recheck_required=True)
+            item["module_verification"] = verification_status(root, approved, events)
             accepted_items.append(item)
         elif decision_path.exists():
             decision, _ = read_md(decision_path)
@@ -280,7 +324,8 @@ def status(root):
         else:
             item["drift"] = changed(data["baseline"], current_inputs(root, data))
         decisions.append(item)
-    return {"modules": mapping["modules"], "decisions": decisions,
+    return {"modules": mapping["modules"], "map_revision": mapping.get("map_revision"),
+            "map_digest": digest(safe(root, DOCS + "/MODULES.md")), "decisions": decisions,
             "accepted": accepted_items, "current": [i for i in accepted_items if not i["replaced_by"]],
             "trust_boundary": "Recorded acceptance is not authenticated; status does not re-run receipt validation."}
 
@@ -307,6 +352,9 @@ def refresh(root):
             lines.append(f"实施：{item['execution']}；验收历史：{item['verification']}；输入变化：{', '.join(item['drift']) or '未发现（仅跟踪范围）'}")
             if item["replaced_by"]:
                 lines.append("旧方案已被替换（不再执行）：" + json.dumps(item["replaced_by"], ensure_ascii=False))
+            verification = item["module_verification"]
+            lines.append("模块验收：" + ", ".join(f"{m['id']}={m['state']}" for m in verification["modules"]))
+            lines.append("交付证据门槛：" + ("未设置" if verification["delivery_ready"] is None else "满足已配置要求（交付前复核凭据）" if verification["delivery_ready"] else "尚未满足"))
         lines.append("")
         history.extend(lines)
         if (item["id"], item["revision"]) in visible:
@@ -315,6 +363,183 @@ def refresh(root):
     write(root, STATE + "/HISTORY.md", "\n".join(history) + "\n")
     write(root, STATE + "/CURRENT.md", "\n".join(body) + "\n")
     return data
+
+
+def map_body(mapping):
+    body = ["# " + mapping.get("title", "模块总览"), "", "此表记录已确定的职责和关系；尚未存在的路径代表计划。", ""]
+    for module in mapping["modules"]:
+        body += [f"## {module['id']} · {module['name']}", "", module["purpose"], "",
+                 "路径：" + ", ".join(module["paths"]), "依赖：" + ", ".join(module.get("depends_on", [])), "", module["contract"], ""]
+        if module.get("verification"):
+            body += ["验收配置：" + json.dumps(module["verification"], ensure_ascii=False, sort_keys=True), ""]
+    return "\n".join(body)
+
+
+def json_input(value):
+    path = Path(value)
+    require(not path.is_symlink() and path.is_file() and path.stat().st_nlink == 1, "JSON input must be an ordinary unlinked file")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def scan_project(root, args):
+    options = {"excludes": args.exclude, "max_bytes": args.max_bytes}
+    inventory = collect(root, **options)
+    relative = f"{STATE}/discovery/S-{uuid.uuid4().hex}.md"
+    body = ["# 现有项目扫描", "", "只提供结构证据；业务模块划分仍需核对代码和用户确认。", "",
+            "## 已纳入文件", ""]
+    body += ["- " + item["path"] for item in inventory["files"]]
+    body += ["", "## 未覆盖", ""]
+    body += [f"- {item['path']}: {item['reason']}" for item in inventory["excluded"]]
+    body += ["", "## 限制", ""] + ["- " + warning for warning in inventory["warnings"]]
+    write(root, relative, md({"schema": 1, "kind": "inventory", "created": now(), "options": options,
+                              "inventory": inventory}, "\n".join(body)), new=True)
+    return {"path": relative, "digest": digest(safe(root, relative)), "summary": inventory["summary"]}
+
+
+def map_drafts(root):
+    items = []
+    for path in sorted(safe(root, STATE + "/maps/drafts").glob("MAP-r*.md")):
+        safe(root, path.relative_to(root).as_posix())
+        data, body = read_md(path)
+        require(data.get("kind") == "module-map" and isinstance(data.get("revision"), int), "invalid map draft")
+        items.append((data, body, path))
+    return items
+
+
+def checked_inventory(root, relative, expected=None):
+    path = safe(root, relative)
+    if expected is not None:
+        require(digest(path) == expected, "scan record changed")
+    scan, _ = read_md(path)
+    require(scan.get("kind") == "inventory" and isinstance(scan.get("options"), dict), "invalid scan record")
+    current = collect(root, **scan["options"])
+    original = {f["path"]: f["sha256"] for f in scan["inventory"]["files"]}
+    actual = {f["path"]: f["sha256"] for f in current["files"]}
+    require(not changed(original, actual), "scanned source changed; scan again before accepting a map")
+    require(scan["inventory"]["excluded"] == current["excluded"], "scan exclusions changed; scan again")
+    return scan["inventory"]
+
+
+def validate_transition(root, previous, mapping, lineage):
+    old = {m["id"]: m for m in previous["modules"]}
+    new = {m["id"]: m for m in mapping["modules"]}
+    require(isinstance(lineage, list), "lineage must be an array")
+    explained = []
+    for entry in lineage:
+        require(isinstance(entry, dict) and isinstance(entry.get("from"), list) and entry["from"] and
+                isinstance(entry.get("to"), list) and isinstance(entry.get("reason"), str) and entry["reason"].strip(), "invalid lineage entry")
+        require(all(i in old for i in entry["from"]) and all(i in new for i in entry["to"]), "unknown lineage module")
+        require(len(entry["from"]) == len(set(entry["from"])) and len(entry["to"]) == len(set(entry["to"])), "duplicate lineage module")
+        explained += entry["from"]
+    require(len(explained) == len(set(explained)), "old module appears in multiple lineage entries")
+    require(set(old) - set(new) <= set(explained), "removed module IDs need explicit retirement, split or merge lineage")
+    retired = set()
+    for path in sorted(safe(root, STATE + "/maps/accepted").glob("MAP-r*.md")):
+        safe(root, path.relative_to(root).as_posix())
+        historical, body = read_md(path)
+        require(historical.get("decision") == "accept", "invalid accepted map")
+        original = {k: v for k, v in historical.items() if k not in {"decision", "decision_note", "proposal_digest"}}
+        source = safe(root, f"{STATE}/maps/drafts/MAP-r{historical['revision']}.md")
+        rebuilt = hashlib.sha256(md(original, body).encode()).hexdigest()
+        require(rebuilt == historical["proposal_digest"] == digest(source), "accepted map differs from its selected draft")
+        retired.update(i for e in historical.get("lineage", []) for i in e["from"] if i not in {m["id"] for m in historical["mapping"]["modules"]})
+    require(not (set(new) - set(old)) & retired, "retired module IDs must not be reused")
+    return {"added": sorted(set(new) - set(old)), "removed": sorted(set(old) - set(new)),
+            "changed": sorted(i for i in set(old) & set(new) if old[i] != new[i])}
+
+
+def candidate_map_body(data):
+    body = map_body(data["mapping"]) + "\n\n## 与原图的差异\n\n" + json.dumps(data["difference"], ensure_ascii=False, indent=2, sort_keys=True)
+    body += "\n\n## 模块对应关系\n\n" + json.dumps(data["lineage"], ensure_ascii=False, indent=2, sort_keys=True)
+    return body + "\n\n## 覆盖与待确认\n\n" + json.dumps(data["coverage"], ensure_ascii=False, indent=2, sort_keys=True)
+
+
+def propose_map(root, args):
+    inventory = checked_inventory(root, args.scan)
+    mapping = json_input(args.map_json)
+    validate_map(mapping)
+    for path in mapping.get("context", []) + [p for m in mapping["modules"] for p in m["paths"]]:
+        safe(root, path)
+    current_path = safe(root, DOCS + "/MODULES.md")
+    previous = module_map(root) if current_path.exists() else {"modules": []}
+    new = {m["id"]: m for m in mapping["modules"]}
+    lineage = json_input(args.lineage_json) if args.lineage_json else []
+    difference = validate_transition(root, previous, mapping, lineage)
+    assignments = {}
+    for item in inventory["files"]:
+        path = item["path"]
+        assignments[path] = [m["id"] for m in new.values() if any(path == p.rstrip("/") or path.startswith(p.rstrip("/") + "/") for p in m["paths"])]
+    coverage = {"unassigned": [p for p, ids in assignments.items() if not ids],
+                "overlapping": {p: ids for p, ids in assignments.items() if len(ids) > 1},
+                "excluded": inventory["excluded"]}
+    revision = max((d[0]["revision"] for d in map_drafts(root)), default=0) + 1
+    relative = f"{STATE}/maps/drafts/MAP-r{revision}.md"
+    metadata = {"schema": 1, "kind": "module-map", "revision": revision, "created": now(), "mapping": mapping,
+                "scan": args.scan, "scan_digest": digest(safe(root, args.scan)),
+                "previous_digest": digest(current_path) if current_path.exists() else None,
+                "lineage": lineage, "difference": difference, "coverage": coverage}
+    write(root, relative, md(metadata, candidate_map_body(metadata)), new=True)
+    return {"path": relative, "revision": revision, "digest": digest(safe(root, relative)), "difference": difference, "coverage": coverage}
+
+
+def decide_map(root, args):
+    path = safe(root, f"{STATE}/maps/drafts/MAP-r{args.revision}.md")
+    data, body = read_md(path)
+    require(digest(path) == args.expect_digest, "selected map digest changed")
+    require(args.revision == max(d[0]["revision"] for d in map_drafts(root)), "a newer map revision exists")
+    destination = f"{STATE}/maps/accepted/MAP-r{args.revision}.md"
+    rejected = f"{STATE}/maps/rejected/MAP-r{args.revision}.md"
+    require(not safe(root, destination).exists() and not safe(root, rejected).exists(), "map revision already has a decision")
+    note = text_file(args.note_file)
+    if args.decision == "reject":
+        write(root, rejected, md({"revision": args.revision, "proposal_digest": args.expect_digest, "created": now()}, "# 模块图拒绝记录\n\n" + note), new=True)
+        return {"decision": "reject", "path": rejected}
+    checked_inventory(root, data["scan"], data["scan_digest"])
+    current = safe(root, DOCS + "/MODULES.md")
+    require((digest(current) if current.exists() else None) == data["previous_digest"], "current module map changed; revise the candidate")
+    mapping = data["mapping"]
+    validate_map(mapping)
+    previous = module_map(root) if current.exists() else {"modules": []}
+    difference = validate_transition(root, previous, mapping, data["lineage"])
+    require(difference == data["difference"], "map difference no longer matches the candidate")
+    require(body == candidate_map_body(data).rstrip() + "\n", "candidate body differs from module data; propose again")
+    for p in mapping.get("context", []) + [p for m in mapping["modules"] for p in m["paths"]]:
+        safe(root, p)
+    changes_folder = safe(root, DOCS + "/changes")
+    require(not changes_folder.exists() or changes_folder.is_dir(), "module changes path must be a directory")
+    for relative in (STATE + "/CURRENT.md", STATE + "/HISTORY.md"):
+        target = safe(root, relative)
+        require(not target.exists() or target.is_file(), "index path must be a regular file")
+    if current.exists():
+        status(root)  # Refuse malformed old records before applying the new map.
+    if current.exists():
+        backup = f"{STATE}/maps/history/{data['previous_digest']}.md"
+        if not safe(root, backup).exists():
+            write(root, backup, current.read_text(encoding="utf-8"), new=True)
+        require(digest(safe(root, backup)) == data["previous_digest"], "previous map archive changed")
+    else:
+        require(not safe(root, DOCS).exists(), "module documentation already exists without MODULES.md; inspect before accepting")
+    data.update(decision="accept", decision_note=note, proposal_digest=args.expect_digest)
+    mapping = dict(mapping, schema=1, map_revision=args.revision, decision_note=note, source_scan=data["scan"],
+                   source_scan_digest=data["scan_digest"])
+    created_folder = not safe(root, DOCS).exists()
+    try:
+        changes_folder.mkdir(parents=True, exist_ok=True)
+        write(root, destination, md(data, body), new=True)
+        write(root, DOCS + "/MODULES.md", md(mapping, map_body(mapping)))
+    except (OSError, ValueError):
+        decision_path = safe(root, destination)
+        if decision_path.exists():
+            decision_path.unlink()
+        if created_folder:
+            if changes_folder.exists() and not any(changes_folder.iterdir()):
+                changes_folder.rmdir()
+            folder = safe(root, DOCS)
+            if folder.exists() and not any(folder.iterdir()):
+                folder.rmdir()
+        raise
+    return {"decision": "accept", "path": destination, "module_document": DOCS + "/MODULES.md",
+            "map_digest": digest(current), "note": "Existing proposal scopes stay frozen; map updates may require re-evaluation."}
 
 
 def initialize(root, args):
@@ -328,12 +553,8 @@ def initialize(root, args):
         safe(root, path)
     require(not safe(root, DOCS).exists(), "module documentation already exists; reuse it instead of overwriting")
     mapping.update(schema=1, decision_note=text_file(args.decision_note_file))
-    body = ["# " + mapping.get("title", "模块总览"), "", "此表记录已确定的职责和关系；尚未存在的路径代表计划。", ""]
-    for module in mapping["modules"]:
-        body += [f"## {module['id']} · {module['name']}", "", module["purpose"], "",
-                 "路径：" + ", ".join(module["paths"]), "依赖：" + ", ".join(module.get("depends_on", [])), "", module["contract"], ""]
     safe(root, DOCS + "/changes").mkdir(parents=True)
-    write(root, DOCS + "/MODULES.md", md(mapping, "\n".join(body)), new=True)
+    write(root, DOCS + "/MODULES.md", md(mapping, map_body(mapping)), new=True)
     return {"module_document": DOCS + "/MODULES.md"}
 
 
@@ -357,11 +578,20 @@ def propose(root, args):
         accepted(root, previous["change"], previous["revision"])
     revision = max((d[0]["revision"] for d in drafts(root, change)), default=0) + 1
     scope = [primary] + affected
-    paths = sorted(set([DOCS] + mapping.get("context", []) + [p for m in scope for p in modules[m]["paths"]]))
+    verification_plan = build_plan(mapping, scope)
+    for check in verification_plan["checks"]:
+        profile_files(check, root)
+        check["config_digest"] = digest(safe(root, check["config"]))
+        check["config_snapshot"] = config_for_check(check, root)
+    check_paths = [p for c in verification_plan["checks"] for p in [c["config"]] + c["inputs"] + c["source_paths"]]
+    paths = sorted(set([DOCS] + mapping.get("context", []) + [p for m in scope for p in modules[m]["paths"]] + check_paths))
     metadata = {"schema": 1, "id": change, "revision": revision, "title": spec["title"],
                 "primary": primary, "affected": affected, "location": spec["location"],
-                "supersedes": supersedes, "created": now(), "tracked_paths": paths, "baseline": snapshot(root, paths)}
+                "supersedes": supersedes, "created": now(), "tracked_paths": paths, "baseline": snapshot(root, paths),
+                "map_digest": digest(safe(root, DOCS + "/MODULES.md")), "verification_plan": verification_plan}
     body = f"# {spec['title']}\n\n## 方案\n\n{spec['plan']}\n\n## 验收条件\n\n{spec['acceptance']}\n"
+    if verification_plan["checks"] or any(m["policy"] != "manual" for m in verification_plan["modules"]):
+        body += "\n## 模块验收计划\n\n" + json.dumps(verification_plan, ensure_ascii=False, indent=2) + "\n"
     relative = draft_path(change, revision)
     write(root, relative, md(metadata, body), new=True)
     candidates = {primary}
@@ -411,13 +641,31 @@ def record(root, args):
     return {"event": args.event, "path": relative}
 
 
-def verify(root, args):
+def verification_context(root, args):
     data, _ = accepted(root, args.change, args.revision, args.expect_digest)
     require(not replacements(root, args.change, args.revision), "accepted revision has been replaced; use the current proposal")
     history = execution_events(root, args.change, args.revision)
     last = max((e[0] for e in history), key=lambda e: e["sequence"], default=None)
     require(last is not None and last["event"] in {"implemented", "verification"}, "record implemented before verification")
     require(not changed(last["inputs"], current_inputs(root, data)), "inputs changed after implementation record")
+    return data
+
+
+def selected_check(data, check_id):
+    plan = data.get("verification_plan", {"checks": []})
+    found = next((c for c in plan["checks"] if c["id"] == check_id), None)
+    require(found is not None, "check is not in the accepted verification plan")
+    return found
+
+
+def kit_entry(value):
+    kit = Path(value).expanduser().resolve() / "bin/acceptance.mjs"
+    require(kit.is_file(), "Acceptance Kit entrypoint not found")
+    return kit
+
+
+def verify(root, args):
+    data = verification_context(root, args)
     receipt_path = Path(args.receipt)
     if receipt_path.is_absolute():
         try:
@@ -427,8 +675,8 @@ def verify(root, args):
             receipt_path = receipt_path.relative_to(project_alias)
     receipt = safe(root, receipt_path.as_posix())
     require(receipt.is_file(), "receipt not found")
-    kit = Path(args.kit).expanduser().resolve() / "bin/acceptance.mjs"
-    require(kit.is_file(), "Acceptance Kit entrypoint not found")
+    kit = kit_entry(args.kit)
+    target = selected_check(data, args.check_id) if getattr(args, "check_id", None) else None
     before = current_inputs(root, data)
     receipt_before = digest(receipt)
     completed = subprocess.run(["node", str(kit), "check", "--project", str(root), "--receipt", str(receipt)],
@@ -439,25 +687,64 @@ def verify(root, args):
     require(isinstance(report, dict), "receipt must be a JSON object")
     require(not changed(before, current_inputs(root, data)) and receipt_before == digest(receipt), "inputs or receipt changed during verification")
     current = completed.returncode == 0 and check.get("current") is True and check.get("issues") == []
-    result = "passed" if current and report.get("status") == "passed" else "failed_or_stale"
+    coverage_issues = check_coverage(report, target, root) if target else []
+    result = "passed" if current and report.get("status") == "passed" and not coverage_issues else "failed_or_stale"
     note = "Acceptance Kit check（不重新执行测试）：\n\n```json\n" + json.dumps(check, ensure_ascii=False, indent=2) + "\n```"
+    extra = {"check_id": target["id"], "modules": target["modules"], "coverage_issues": coverage_issues} if target else {}
     relative = event(root, data, "verification", note, result=result, receipt=receipt.relative_to(root).as_posix(),
-                     receipt_digest=digest(receipt), kit_check=check)
-    return {"result": result, "receipt_current": current, "path": relative}
+                     receipt_digest=digest(receipt), kit_check=check, **extra)
+    return {"result": result, "receipt_current": current, "path": relative, "coverage_issues": coverage_issues,
+            "check_id": target["id"] if target else None}
+
+
+def run_checks(root, args):
+    data = verification_context(root, args)
+    require(len(args.check_id) == len(set(args.check_id)), "duplicate check ID")
+    selections = [selected_check(data, i) for i in args.check_id]
+    kit = kit_entry(args.kit)
+    # Validate every requested configuration before executing any of its commands.
+    for target in selections:
+        profile_files(target, root)
+    results = []
+    for target in selections:
+        before = current_inputs(root, data)
+        timeout = 60 + sum(s.get("timeoutMs", 180000) / 1000 for s in config_for_check(target, root)["steps"])
+        completed = subprocess.run(["node", str(kit), "run", "--project", str(root), "--config", target["config"]],
+                                   capture_output=True, text=True, timeout=timeout)
+        require(not changed(before, current_inputs(root, data)), "inputs changed during check execution")
+        receipts = re.findall(r"^(?:passed|failed|incomplete): (.+)$", completed.stdout, re.MULTILINE)
+        require(len(receipts) == 1, "Kit did not return one receipt; inspect its run output")
+        verification_args = argparse.Namespace(**vars(args))
+        verification_args.receipt = receipts[0]
+        verification_args.check_id = target["id"]
+        results.append(verify(root, verification_args))
+    return {"result": "passed" if all(r["result"] == "passed" for r in results) else "failed_or_stale", "checks": results}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("init", "propose", "decide", "record", "verify", "status", "refresh"):
+    for name in ("init", "scan", "map-propose", "map-decide", "propose", "decide", "record", "verify", "run-checks", "status", "refresh"):
         command = commands.add_parser(name)
         command.add_argument("--project", required=True)
         if name == "init":
             command.add_argument("--map-json", required=True)
             command.add_argument("--decision-note-file", required=True)
+        if name == "scan":
+            command.add_argument("--exclude", action="append", default=[])
+            command.add_argument("--max-bytes", type=int, default=262144)
+        if name == "map-propose":
+            command.add_argument("--map-json", required=True)
+            command.add_argument("--scan", required=True)
+            command.add_argument("--lineage-json")
+        if name == "map-decide":
+            command.add_argument("--revision", required=True, type=int)
+            command.add_argument("--expect-digest", required=True)
+            command.add_argument("--decision", choices=("accept", "reject"), required=True)
+            command.add_argument("--note-file", required=True)
         if name == "propose":
             command.add_argument("--spec-json", required=True)
-        if name in {"decide", "record", "verify"}:
+        if name in {"decide", "record", "verify", "run-checks"}:
             command.add_argument("--change", required=True)
             command.add_argument("--revision", required=True, type=int)
             command.add_argument("--expect-digest", required=True)
@@ -467,9 +754,13 @@ def main():
             command.add_argument("--note-file", required=True)
         if name == "record":
             command.add_argument("--event", choices=("started", "implemented", "interrupted"), required=True)
-        if name == "verify":
+        if name in {"verify", "run-checks"}:
             command.add_argument("--kit", required=True)
+        if name == "verify":
             command.add_argument("--receipt", required=True)
+            command.add_argument("--check-id")
+        if name == "run-checks":
+            command.add_argument("--check-id", action="append", required=True)
     args = parser.parse_args()
     try:
         root = Path(args.project).expanduser().resolve(strict=True)
@@ -478,10 +769,12 @@ def main():
             result = status(root)
         else:
             with locked(root):
-                action = {"init": initialize, "propose": propose, "decide": decide, "record": record, "verify": verify}
+                action = {"init": initialize, "scan": scan_project, "map-propose": propose_map, "map-decide": decide_map,
+                          "propose": propose, "decide": decide, "record": record, "verify": verify, "run-checks": run_checks}
                 result = action[args.command](root, args) if args.command != "refresh" else {}
-                result["status"] = refresh(root)
-        passed = args.command != "verify" or result["result"] == "passed"
+                if safe(root, DOCS + "/MODULES.md").exists():
+                    result["status"] = refresh(root)
+        passed = args.command not in {"verify", "run-checks"} or result["result"] == "passed"
         print(json.dumps({"ok": passed, **result}, ensure_ascii=False, indent=2))
         if not passed:
             return 2

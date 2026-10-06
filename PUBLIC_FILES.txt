@@ -8,7 +8,16 @@ SECURITY.md
 SKILL.md
 agents/openai.yaml
 references/cli.md
+references/discovery.md
+references/verification.md
 references/workflow.md
+scripts/discovery.py
 scripts/module_change.py
+scripts/verification.py
+tests/test_discovery.py
+tests/test_map_adversarial.py
+tests/test_module_adversarial.py
 tests/test_security.py
+tests/test_v02_workflow.py
+tests/test_verification.py
 tests/test_workflow.py

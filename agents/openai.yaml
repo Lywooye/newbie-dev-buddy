@@ -1,4 +1,4 @@
 interface:
-  display_name: "模块修改与交接"
-  short_description: "定位模块与关联影响，确认修改方案，保存版本历史并衔接验收证据"
-  default_prompt: "使用 $module-change-workflow 管理这个项目的模块、修改方案与历史，先给方案，等我确认后实施。"
+  display_name: "模块梳理与变更"
+  short_description: "梳理既有模块、确认方案版本，按模块选择验收并保存结构与实施历史"
+  default_prompt: "使用 $module-change-workflow 梳理这个项目的模块和关系，给出可确认的地图，再管理修改方案与可选模块验收。"
