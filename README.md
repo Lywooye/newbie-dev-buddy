@@ -4,9 +4,9 @@
 
 A local Skill for beginners building software with AI. Describe what you want to build; your coding agent proposes a module plan and development approach for review before implementation. New projects start with module design; existing projects start with code inspection. Reviewed maps, accepted plans, implementation events, and optional acceptance evidence stay in Markdown for later sessions.
 
-The Chinese product name is **小白开发搭子**. The companion Python CLI maintains the records. The installation identifier and invocation name remain `module-change-workflow` for compatibility with existing installations and project records.
+The Chinese product name is **小白开发搭子**. Install and invoke the Skill as `newbie-dev-buddy`; the companion Python CLI maintains the records.
 
-**Version 0.2.1 is experimental.** The workflow has synthetic validation and small external-Kit integration examples; it has not been evaluated on a user's production project or shown to outperform other tools. Generated workflow prose is currently Chinese; supplied names, contracts, plans, and notes retain their language.
+**Version 0.3.0 is experimental.** The workflow has synthetic validation and small external-Kit integration examples; it has not been evaluated on a user's production project or shown to outperform other tools. Generated workflow prose is currently Chinese; supplied names, contracts, plans, and notes retain their language.
 
 ## What it helps with
 
@@ -26,22 +26,22 @@ The records support review and handoff. They do not authenticate consent, preven
 - Node.js and a trusted compatible Acceptance Kit are optional, needed only for `run-checks` and `verify`. Integration uses Acceptance Kit 0.1.2, which requires Node.js 22 or later. The Kit is not bundled or installed automatically.
 - A local Skill host is needed for the agent instructions; the CLI also works directly. CodeGraph and Understand Anything are optional analysis sources, not dependencies.
 
-Copy the source into a directory named `module-change-workflow`. From its parent, install the Skill without overwriting an existing deployment:
+Copy the source into a directory named `newbie-dev-buddy`. From its parent, install the Skill without overwriting an existing deployment:
 
 ```sh
 (
   set -eu
   skill_root="${CODEX_HOME:-$HOME/.codex}/skills"
-  skill_target="$skill_root/module-change-workflow"
+  skill_target="$skill_root/newbie-dev-buddy"
   if [ -e "$skill_target" ] || [ -L "$skill_target" ]; then
     printf '%s\n' 'Destination already exists; inspect it before updating.' >&2
     exit 1
   fi
   mkdir -p "$skill_root"
   mkdir "$skill_target"
-  cp ./module-change-workflow/SKILL.md "$skill_target/"
-  cp -R ./module-change-workflow/agents ./module-change-workflow/references \
-    ./module-change-workflow/scripts "$skill_target/"
+  cp ./newbie-dev-buddy/SKILL.md "$skill_target/"
+  cp -R ./newbie-dev-buddy/agents ./newbie-dev-buddy/references \
+    ./newbie-dev-buddy/scripts "$skill_target/"
 )
 ```
 
@@ -51,7 +51,7 @@ Reload Skills according to your host's instructions. If a Skills manager owns th
 
 Start with the [beginner guide in Chinese](references/beginner-guide.md), including setup, new projects, changes, and continuing in another conversation.
 
-Invoke `$module-change-workflow` for the intended project:
+Invoke `$newbie-dev-buddy` for the intended project:
 
 For a new project:
 
@@ -80,29 +80,29 @@ The examples below use an existing project. For a new project, save the reviewed
 Commands below run from this source directory. Paths, names, and SHA placeholders are synthetic; get actual scan paths, revisions, and digests from JSON command results.
 
 ```sh
-python3 scripts/module_change.py scan --project ./sample-project --exclude private
-python3 scripts/module_change.py map-propose --project ./sample-project \
-  --scan .handoff/module-change/discovery/S-SCAN.md --map-json ./map.json
+python3 scripts/newbie_dev_buddy.py scan --project ./sample-project --exclude private
+python3 scripts/newbie_dev_buddy.py map-propose --project ./sample-project \
+  --scan .handoff/newbie-dev-buddy/discovery/S-SCAN.md --map-json ./map.json
 ```
 
-Keep generated map/spec JSON under the project's `.handoff/module-change/inputs/` or outside the project in a temporary directory, so generating transport inputs does not invalidate the scan. The map and versioned Markdown remain authoritative.
+Keep generated map/spec JSON under the project's `.handoff/newbie-dev-buddy/inputs/` or outside the project in a temporary directory, so generating transport inputs does not invalidate the scan. The map and versioned Markdown remain authoritative.
 
 Read the complete candidate. After the user accepts that exact version, save the actual decision in `map-note.md` and use its returned revision and digest:
 
 ```sh
-python3 scripts/module_change.py map-decide --project ./sample-project \
+python3 scripts/newbie_dev_buddy.py map-decide --project ./sample-project \
   --revision MAP_REVISION --expect-digest MAP_CANDIDATE_SHA \
   --decision accept --note-file ./map-note.md
 ```
 
-The first acceptance creates `docs/module-change/MODULES.md`. Later acceptance retains the old map and updates the current one. A note file records a decision; it does not itself create permission.
+The first acceptance creates `docs/newbie-dev-buddy/MODULES.md`. Later acceptance retains the old map and updates the current one. A note file records a decision; it does not itself create permission.
 
 Prepare a complete `spec.json` with the change ID, primary and affected modules, location, plan, and observable acceptance conditions. Then use `propose`, review and `decide`, record `started`, implement, and record `implemented`. See [input schemas and examples](references/cli.md).
 
 After selected checks are authorized and a trusted Kit is available:
 
 ```sh
-python3 scripts/module_change.py run-checks --project ./sample-project \
+python3 scripts/newbie_dev_buddy.py run-checks --project ./sample-project \
   --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA \
   --kit ./acceptance-kit --check-id module:M-EXPORT
 ```
@@ -110,21 +110,21 @@ python3 scripts/module_change.py run-checks --project ./sample-project \
 Or run the Kit through the project's existing process, then recheck its real report:
 
 ```sh
-python3 scripts/module_change.py verify --project ./sample-project \
+python3 scripts/newbie_dev_buddy.py verify --project ./sample-project \
   --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA \
   --kit ./acceptance-kit --receipt .acceptance/example-run/report.json \
   --check-id module:M-EXPORT
 ```
 
-`run-checks` rechecks the frozen configuration, then executes every step in each selected configuration with the invoking user's permissions; it is not a sandbox. Changing check commands after starting requires a revised, accepted proposal. `verify` invokes the supplied Kit's checker but does not run project tests. Use trusted configurations and exclude generated `.handoff/module-change/` records from Kit inputs without excluding all relevant documentation. No Kit means open verification items, not an invented passing report.
+`run-checks` rechecks the frozen configuration, then executes every step in each selected configuration with the invoking user's permissions; it is not a sandbox. Changing check commands after starting requires a revised, accepted proposal. `verify` invokes the supplied Kit's checker but does not run project tests. Use trusted configurations and exclude generated `.handoff/newbie-dev-buddy/` records from Kit inputs without excluding all relevant documentation. No Kit means open verification items, not an invented passing report.
 
 `status` is read-only and does not rerun the Kit. Recheck historical evidence before relying on it. `refresh` rebuilds indexes only; it does not rescan modules. Parameter errors exit with code 1; completed failed or stale verification exits with code 2. Inspect JSON and exit status.
 
-## Records and compatibility
+## Records and handoff
 
-Current structure lives in `docs/module-change/MODULES.md`; accepted changes in `docs/module-change/changes/`. Scans, map history, candidates, decisions, and events live under `.handoff/module-change/`. Back up both directories; only `CURRENT.md` and `HISTORY.md` navigation indexes can be regenerated.
+Current structure lives in `docs/newbie-dev-buddy/MODULES.md`; accepted changes in `docs/newbie-dev-buddy/changes/`. Scans, map history, candidates, decisions, and events live under `.handoff/newbie-dev-buddy/`. Back up both directories; only `CURRENT.md` and `HISTORY.md` navigation indexes can be regenerated.
 
-Version 0.1.1 maps remain readable without new verification fields. The original `init`, change proposal format, and unscoped `verify` remain available. Updating the map does not rewrite accepted changes or silently expand their tracked scope. An unscoped passing report is retained as overall historical evidence, not assigned to every module.
+Updating the map does not rewrite accepted changes or silently expand their tracked scope. An unscoped passing report is retained as overall historical evidence, not assigned to every module.
 
 Records are local by default. Relative links help portability, but inputs, paths, findings, and Kit output may contain private information. There is no automatic anonymization; inspect records before publishing.
 

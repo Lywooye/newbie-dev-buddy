@@ -13,7 +13,7 @@ references/discovery.md
 references/verification.md
 references/workflow.md
 scripts/discovery.py
-scripts/module_change.py
+scripts/newbie_dev_buddy.py
 scripts/verification.py
 tests/test_discovery.py
 tests/test_map_adversarial.py

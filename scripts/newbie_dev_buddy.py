@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local Markdown change records; optional verification runs a trusted Kit checker."""
+"""Newbie Dev Buddy: local Markdown plans and optional trusted Kit verification."""
 import argparse
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -18,8 +18,8 @@ from discovery import collect
 from verification import build_plan, check_coverage, config_for_check, profile_files, validate_settings
 
 
-DOCS = "docs/module-change"
-STATE = ".handoff/module-change"
+DOCS = "docs/newbie-dev-buddy"
+STATE = ".handoff/newbie-dev-buddy"
 MODULE_ID = r"M-[A-Z0-9][A-Z0-9-]{0,47}"
 CHANGE_ID = r"C-[A-Za-z0-9][A-Za-z0-9-]{0,47}"
 SKIP = {".git", ".handoff", ".acceptance", "__pycache__", ".DS_Store"}
@@ -83,7 +83,7 @@ def write(root, relative, content, *, new=False):
     target = safe(root, relative)
     target.parent.mkdir(parents=True, exist_ok=True)
     require(not new or not target.exists(), f"record already exists: {relative}")
-    fd, temporary = tempfile.mkstemp(prefix=".module-change-", dir=target.parent)
+    fd, temporary = tempfile.mkstemp(prefix=".newbie-dev-buddy-", dir=target.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
             stream.write(content)
@@ -151,7 +151,7 @@ def snapshot(root, paths):
         elif path.is_dir():
             result[rel] = "<directory>"
             for child in sorted(path.iterdir()):
-                if child.name not in SKIP and not child.name.startswith(".module-change-"):
+                if child.name not in SKIP and not child.name.startswith(".newbie-dev-buddy-"):
                     visit(child)
         elif not path.exists():
             result[rel] = "<missing>"

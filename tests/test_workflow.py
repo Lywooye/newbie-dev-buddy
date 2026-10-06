@@ -7,12 +7,12 @@ import tempfile
 import unittest
 
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts/module_change.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts/newbie_dev_buddy.py"
 
 
 class WorkflowTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="module-change-test-")
+        self.temp = tempfile.TemporaryDirectory(prefix="newbie-dev-buddy-test-")
         self.base = Path(self.temp.name)
         self.project = self.base / "project"
         self.project.mkdir()
@@ -117,7 +117,7 @@ class WorkflowTests(unittest.TestCase):
         self.record(p, adopted, "started")
         (self.project / "src/value.txt").write_text("final\n")
         self.record(p, adopted, "implemented")
-        events = list((self.project / ".handoff/module-change/records").glob("*.md"))
+        events = list((self.project / ".handoff/newbie-dev-buddy/records").glob("*.md"))
         self.assertEqual(len(events), 4)
         self.assertEqual(self.call("status")["current"][0]["drift"], [])
 
@@ -139,8 +139,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual((self.project / adopted1["path"]).read_bytes(), old)
         self.assertEqual(self.call("status")["current"][0]["revision"], 2)
         self.record(p1, adopted1, "started", ok=False)
-        current = (self.project / ".handoff/module-change/CURRENT.md").read_text()
-        history = (self.project / ".handoff/module-change/HISTORY.md").read_text()
+        current = (self.project / ".handoff/newbie-dev-buddy/CURRENT.md").read_text()
+        history = (self.project / ".handoff/newbie-dev-buddy/HISTORY.md").read_text()
         self.assertNotIn("## C-001 r1", current)
         self.assertIn("## C-001 r2", current)
         self.assertIn("## C-001 r1", history)
@@ -163,11 +163,11 @@ class WorkflowTests(unittest.TestCase):
 
     def test_writer_lock_and_regenerated_index(self):
         p = self.proposal()
-        lock = self.project / ".handoff/module-change/write.lock"
+        lock = self.project / ".handoff/newbie-dev-buddy/write.lock"
         lock.write_text('{"pid": 999999, "synthetic": true}')
         self.call("refresh", ok=False)
         lock.unlink()
-        index = self.project / ".handoff/module-change/CURRENT.md"
+        index = self.project / ".handoff/newbie-dev-buddy/CURRENT.md"
         index.write_text("incomplete index\n")
         self.call("refresh")
         self.assertIn("C-001", index.read_text())

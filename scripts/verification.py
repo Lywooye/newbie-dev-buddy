@@ -158,8 +158,8 @@ def config_for_check(check, root):
         require(isinstance(values, list), key + " must be an array")
         for value in values:
             exclusions.append(relative(value))
-    require(matches(".handoff/module-change", config.get("exclude", [])),
-            "Kit config must exclude .handoff or .handoff/module-change before recording results")
+    require(matches(".handoff/newbie-dev-buddy", config.get("exclude", [])),
+            "Kit config must exclude .handoff or .handoff/newbie-dev-buddy before recording results")
     steps = config.get("steps")
     require(isinstance(steps, list) and steps and all(isinstance(step, dict) for step in steps),
             "Kit configuration requires steps")
@@ -194,7 +194,7 @@ def input_files(root, paths):
             files[value] = hashlib.sha256(path.read_bytes()).hexdigest()
         else:
             for child in sorted(path.iterdir()):
-                if child.name not in GENERATED and not child.name.startswith(".module-change-"):
+                if child.name not in GENERATED and not child.name.startswith(".newbie-dev-buddy-"):
                     visit(child.relative_to(root).as_posix())
 
     for value in sorted(set(paths)):

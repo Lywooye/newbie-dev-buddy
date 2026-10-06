@@ -4,4 +4,4 @@ __pycache__/
 .venv/
 .handoff/
 .acceptance/
-.module-change-*
+.newbie-dev-buddy-*

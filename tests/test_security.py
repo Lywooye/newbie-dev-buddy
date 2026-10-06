@@ -16,12 +16,12 @@ import unittest
 from urllib.parse import unquote, urlsplit
 
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts/module_change.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts/newbie_dev_buddy.py"
 
 
 class SecurityRegressions(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="module-change-security-")
+        self.temp = tempfile.TemporaryDirectory(prefix="newbie-dev-buddy-security-")
         self.base = Path(self.temp.name).resolve()
         self.project = self.base / "sample space 中文 #(v1)"
         self.project.mkdir()
@@ -101,7 +101,7 @@ class SecurityRegressions(unittest.TestCase):
     def test_generated_links_are_relative_and_resolve_in_special_character_project(self):
         self.accepted()
         for name in ("CURRENT.md", "HISTORY.md"):
-            index = self.project / ".handoff/module-change" / name
+            index = self.project / ".handoff/newbie-dev-buddy" / name
             content = index.read_text(encoding="utf-8")
             self.assertNotIn(str(self.project), content)
             targets = re.findall(r"\[[^\]]*\]\(([^)]+)\)", content)
@@ -117,7 +117,7 @@ class SecurityRegressions(unittest.TestCase):
         value = dict(self.mapping)
         value["modules"] = [dict(value["modules"][0], contract="SYNTHETIC_OUTSIDE_ONLY_MARKER")]
         outside.write_text("---\n" + json.dumps(value) + "\n---\n\n# Synthetic\n", encoding="utf-8")
-        document = self.project / "docs/module-change/MODULES.md"
+        document = self.project / "docs/newbie-dev-buddy/MODULES.md"
         document.unlink()
         os.link(outside, document)
         result = self.raw("status")
@@ -135,7 +135,7 @@ class SecurityRegressions(unittest.TestCase):
             "location": "value", "plan": "Update value.", "acceptance": "Value updates."}))
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertNotIn(expected_hash, result.stdout + result.stderr)
-        self.assertFalse(list((self.project / ".handoff/module-change/drafts").glob("*.md")))
+        self.assertFalse(list((self.project / ".handoff/newbie-dev-buddy/drafts").glob("*.md")))
 
     def test_nested_symlink_is_refused(self):
         outside = self.base / "outside.txt"
@@ -152,7 +152,7 @@ class SecurityRegressions(unittest.TestCase):
                   "--decision-note-file", self.note, project=other, ok=False)
 
     def test_nonobject_draft_baseline_has_structured_error(self):
-        folder = self.project / ".handoff/module-change/drafts"
+        folder = self.project / ".handoff/newbie-dev-buddy/drafts"
         folder.mkdir(parents=True, exist_ok=True)
         metadata = {"id": "C-001", "revision": 1, "primary": "M-DATA", "affected": [],
                     "location": "value", "tracked_paths": ["src"], "baseline": []}
@@ -162,20 +162,20 @@ class SecurityRegressions(unittest.TestCase):
 
     @unittest.skipUnless(hasattr(os, "mkfifo"), "Named pipes are unavailable")
     def test_fifo_module_document_is_refused_without_hanging(self):
-        document = self.project / "docs/module-change/MODULES.md"
+        document = self.project / "docs/newbie-dev-buddy/MODULES.md"
         document.unlink()
         os.mkfifo(document)
         self.call("status", ok=False)
 
     @unittest.skipUnless(hasattr(os, "mkfifo"), "Named pipes are unavailable")
     def test_fifo_draft_is_refused_without_hanging(self):
-        drafts = self.project / ".handoff/module-change/drafts"
+        drafts = self.project / ".handoff/newbie-dev-buddy/drafts"
         drafts.mkdir(parents=True, exist_ok=True)
         os.mkfifo(drafts / "C-PIPE-r1.md")
         self.call("status", ok=False)
 
     def test_missing_frontmatter_error_does_not_disclose_project_root(self):
-        document = self.project / "docs/module-change/MODULES.md"
+        document = self.project / "docs/newbie-dev-buddy/MODULES.md"
         document.write_text("# Synthetic malformed document\n", encoding="utf-8")
         result = self.raw("status")
         self.assertEqual(result.returncode, 1)
@@ -183,7 +183,7 @@ class SecurityRegressions(unittest.TestCase):
         self.assertFalse(json.loads(result.stderr)["ok"])
 
     def test_existing_lock_error_does_not_disclose_project_root(self):
-        lock = self.project / ".handoff/module-change/write.lock"
+        lock = self.project / ".handoff/newbie-dev-buddy/write.lock"
         lock.write_text('{"pid": 999999, "synthetic": true}', encoding="utf-8")
         result = self.raw("refresh")
         self.assertEqual(result.returncode, 1)

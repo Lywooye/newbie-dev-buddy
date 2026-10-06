@@ -2,12 +2,12 @@
 
 **Newbie Dev Buddy** 帮你把“想做什么”变成可讨论、可保存、可继续的开发过程。你负责目标和取舍，AI 负责阅读代码、准备技术材料和执行；每次先看懂方案，再确认开发。
 
-展示名改了，调用名仍是 **`$module-change-workflow`**。
+调用 **`$newbie-dev-buddy`** 开始使用。
 
 ## 1. 开始前准备三件事
 
 - 一个支持本地 Skill、能操作项目文件的 AI 编程助手，例如 Codex。
-- 已安装的 `module-change-workflow` Skill；安装方法见[中文说明](../README.zh-CN.md#要求与安装)。已有安装无需重复安装；由 Skills Manager 管理的，通过原管理器更新。
+- 已安装的 `newbie-dev-buddy` Skill；安装方法见[中文说明](../README.zh-CN.md#要求与安装)。已有安装无需重复安装；由 Skills Manager 管理的，通过原管理器更新。
 - 一个打开或新建的项目文件夹，并明确告诉 AI 这是本次项目目录。
 
 让 AI 先检查环境是否可用：核心工具需要 Python 3.9 及以上，当前扫描支持 macOS/Linux。这个 Skill 不自带 AI 模型，也不自动配置开发环境。Acceptance Kit 是可选的检查工具，不需要一开始就安装；需要时再确认兼容环境和配置。
@@ -19,7 +19,7 @@
 ```text
 请从[本项目的 GitHub 仓库地址]安装“小白开发搭子”Skill 到我的 Codex。
 先检查是否已有安装；如果由 Skills Manager 管理，就通过管理器更新。
-完成后确认我可以调用 $module-change-workflow。
+完成后确认我可以调用 $newbie-dev-buddy。
 ```
 
 ## 2. 新项目：先确定第一版做什么
@@ -29,7 +29,7 @@
 复制到助手中，把方括号里的内容换成自己的描述：
 
 ```text
-$module-change-workflow
+$newbie-dev-buddy
 项目目录：[我选定的项目文件夹]
 我想做：[工具用途、谁使用、希望得到的结果]。
 我不懂编程，请先帮我确定第一版最少需要哪些功能，
@@ -44,7 +44,7 @@ $module-change-workflow
 已有代码时，让 AI 先扫描并核对源码，按职责整理候选模块地图。它应区分已核实、推断和待核实的内容，说明没读到哪些文件、现有测试检查了什么。扫描清单本身不能自动判断业务模块。
 
 ```text
-$module-change-workflow
+$newbie-dev-buddy
 项目目录：[已有项目的文件夹]
 请先梳理这个项目现在有哪些模块、各自负责什么、怎样联系。
 区分已核实、推断和待核实，列出未覆盖部分和现有测试情况。
@@ -54,7 +54,7 @@ $module-change-workflow
 ## 4. 后续修改：讲清变化和完成条件
 
 ```text
-$module-change-workflow
+$newbie-dev-buddy
 请在这个项目增加或修改：[具体需求]。
 先读取模块结构和旧修改记录，说明会影响哪些部分、准备怎样改、
 怎样判断改对了，并列出可选检查。展示具体方案，等我确认后实施。
@@ -84,13 +84,13 @@ Kit 运行项目已有的检查配置；它不会凭空补齐测试。请 AI 先
 继续旧会话也要让 AI 读记录；换对话时，重新指定同一个项目目录：
 
 ```text
-$module-change-workflow
-请继续这个项目。先读取 docs/module-change/MODULES.md、
-相关修改方案和 .handoff/module-change/ 中的实施记录，核对当前状态。
+$newbie-dev-buddy
+请继续这个项目。先读取 docs/newbie-dev-buddy/MODULES.md、
+相关修改方案和 .handoff/newbie-dev-buddy/ 中的实施记录，核对当前状态。
 告诉我已完成、未完成、待验证的内容和下一步，再继续已确认的范围。
 ```
 
-`docs/module-change/` 保存结构和已接受方案；`.handoff/module-change/` 保存扫描、历史、决定和执行记录。两处一起备份，后者也不是可以随手删除的缓存。分享记录前检查其中是否含私密信息。
+`docs/newbie-dev-buddy/` 保存结构和已接受方案；`.handoff/newbie-dev-buddy/` 保存扫描、历史、决定和执行记录。两处一起备份，后者也不是可以随手删除的缓存。分享记录前检查其中是否含私密信息。
 
 ## 几个常见词
 

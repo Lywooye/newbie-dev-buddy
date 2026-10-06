@@ -16,7 +16,7 @@
 
 模块检查 ID 为 `module:M-ID`；跨模块检查放在 `integration_checks`，ID 为 `integration:ID`，至少引用两个模块，策略为 `on-change` 或 `required`。它们说明哪些接口或流程需要联动检查，不能用几个独立模块报告代替集成验证。
 
-Kit 配置必须在 `exclude` 中排除 `.handoff/module-change` 或整个 `.handoff`，JSON 路径不要带末尾斜线，否则登记结果会改变报告输入。不要排除所有 `docs/`；工具不自动改 Kit 配置。具体 Kit 的配置格式与可执行步骤按该 Kit 文档核对。
+Kit 配置必须在 `exclude` 中排除 `.handoff/newbie-dev-buddy` 或整个 `.handoff`，JSON 路径不要带末尾斜线，否则登记结果会改变报告输入。不要排除所有 `docs/`；工具不自动改 Kit 配置。具体 Kit 的配置格式与可执行步骤按该 Kit 文档核对。
 
 ## 冻结与执行
 
@@ -24,7 +24,7 @@ Kit 配置必须在 `exclude` 中排除 `.handoff/module-change` 或整个 `.han
 
 用户选定检查或已经接受运行策略后，`run-checks --check-id ...` 先核对冻结配置，再调用可信 Kit 实际运行选中的配置，复核报告并记录结果。每份选中配置的全部步骤都会运行；地图中的 `steps` 指定必须具备通过证据的步骤，不是命令筛选器。运行前检查实际命令和权限；CLI 不提供操作系统沙箱，项目测试可以写文件、访问网络或调用其他程序。
 
-也可用项目已有流程先运行 Kit，再用 `verify --check-id ... --receipt ...` 核对相应检查。无 `--check-id` 的兼容 `verify` 保存整体报告核对，不会把所有模块标为通过。报告应来自真实 Kit，不自行生成具有 `passed` 的 JSON 冒充验收。
+也可用项目已有流程先运行 Kit，再用 `verify --check-id ... --receipt ...` 核对相应检查。无 `--check-id` 的 `verify` 保存整体报告核对，不会把所有模块标为通过。报告应来自真实 Kit，不自行生成具有 `passed` 的 JSON 冒充验收。
 
 覆盖核对检查真实报告的配置、必需步骤和声明输入是否对应计划，同时要求至少一个 `tap` 或 `checks` 行为步骤提供非空证明；只看退出码的 `exit` 步骤不能单独作为模块验收。它仍不能证明命令语义、测试充分性或业务需求全部满足；执行者还需核对实际测试内容。
 

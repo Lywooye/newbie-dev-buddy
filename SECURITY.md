@@ -1,6 +1,6 @@
 # Security
 
-Version 0.2.1 is experimental. Synthetic behavior tests and small integration examples are not a security certification or proof of production readiness.
+Version 0.3.0 is experimental. Synthetic behavior tests and small integration examples are not a security certification or proof of production readiness.
 
 ## Trust boundaries
 
@@ -17,9 +17,9 @@ Project paths supported by the CLI stay within the specified root. Symlinks, har
 
 Scan exclusions and size limits reduce collection; they are not secret detection or anonymization. Even an inventory can reveal private filenames, relationships, source identifiers, or paths. Records retain maps, findings, contracts, decisions, plans, frozen configuration JSON, and check results. Generated links are relative, but caller-supplied text and Kit output or diagnostics may contain machine paths, private data, or credentials. There is no automatic redaction guarantee.
 
-The core records remain local and are not uploaded automatically. Review both `docs/module-change/` and `.handoff/module-change/` before sharing or committing them. Configure project-specific exclusions before scanning and avoid entering secrets into notes. Optional tools and configured test commands may have separate network behavior.
+The core records remain local and are not uploaded automatically. Review both `docs/newbie-dev-buddy/` and `.handoff/newbie-dev-buddy/` before sharing or committing them. Configure project-specific exclusions before scanning and avoid entering secrets into notes. Optional tools and configured test commands may have separate network behavior.
 
-Back up current documents and persistent records together. Exclude generated `.handoff/module-change/` records or `.handoff` from Kit inputs while retaining related source, configurations, tests, and documentation. Complete those changes before acceptance; recording an event must not immediately invalidate the report. The CLI does not silently rewrite Kit configuration to achieve a pass.
+Back up current documents and persistent records together. Exclude generated `.handoff/newbie-dev-buddy/` records or `.handoff` from Kit inputs while retaining related source, configurations, tests, and documentation. Complete those changes before acceptance; recording an event must not immediately invalidate the report. The CLI does not silently rewrite Kit configuration to achieve a pass.
 
 Map acceptance writes several files. Per-file replacement is not a cross-file transaction or a power-loss recovery mechanism. After an exception or interruption, inspect the current map, accepted candidate, archive, and lock before retrying; do not assume that all writes completed or were rolled back.
 

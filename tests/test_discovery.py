@@ -86,7 +86,7 @@ class DiscoveryTests(unittest.TestCase):
         excluded = [".git/object.txt", ".handoff/proposal.md", ".acceptance/report.json", "node_modules/dependency.js",
                     ".venv/python.py", "venv/python.py", "dist/result.js", "build/result.js",
                     "__pycache__/cache.py", ".ssh/key", ".aws/credentials", ".credentials/token",
-                    "docs/module-change/MODULES.md", ".env", ".env.local", "private.KEY", "server.crt", "id_ed25519"]
+                    "docs/newbie-dev-buddy/MODULES.md", ".env", ".env.local", "private.KEY", "server.crt", "id_ed25519"]
         for relative in excluded:
             self.write(relative, "SYNTHETIC_EXCLUDED_CONTENT\n")
         self.write("docs/user-guide.md", "Synthetic docs\n")

@@ -32,7 +32,7 @@ MAX_DEPTH = 128
 def _excluded_reason(relative, patterns):
     path = PurePosixPath(relative)
     name = path.name
-    if name in SKIP_NAMES or relative == "docs/module-change":
+    if name in SKIP_NAMES or relative == "docs/newbie-dev-buddy":
         return "default_exclusion"
     if name.lower().startswith(".env") or name.lower().startswith(("id_rsa", "id_dsa", "id_ecdsa", "id_ed25519")):
         return "sensitive_name"

@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts/module_change.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts/newbie_dev_buddy.py"
 
 
 class MapAdversarialTests(unittest.TestCase):
@@ -132,7 +132,7 @@ class MapAdversarialTests(unittest.TestCase):
 
     def test_current_map_change_blocks_acceptance_even_though_discovery_excludes_it(self):
         proposal = self.proposal()
-        current = self.project / "docs/module-change/MODULES.md"
+        current = self.project / "docs/newbie-dev-buddy/MODULES.md"
         current.write_text(current.read_text(encoding="utf-8") + "\nSynthetic external edit.\n", encoding="utf-8")
         self.assertIn("current module map changed", self.decision(proposal, ok=False)["error"])
 
@@ -144,38 +144,38 @@ class MapAdversarialTests(unittest.TestCase):
 
     def test_corrupt_history_backup_blocks_adoption_before_decision_is_written(self):
         proposal = self.proposal()
-        current = self.project / "docs/module-change/MODULES.md"
+        current = self.project / "docs/newbie-dev-buddy/MODULES.md"
         previous_digest = hashlib.sha256(current.read_bytes()).hexdigest()
-        backup = self.project / ".handoff/module-change/maps/history" / (previous_digest + ".md")
+        backup = self.project / ".handoff/newbie-dev-buddy/maps/history" / (previous_digest + ".md")
         backup.parent.mkdir(parents=True, exist_ok=True)
         backup.write_text("Synthetic corrupted history.\n")
         self.assertIn("previous map archive changed", self.decision(proposal, ok=False)["error"])
         self.assertEqual(hashlib.sha256(current.read_bytes()).hexdigest(), previous_digest)
-        self.assertFalse((self.project / ".handoff/module-change/maps/accepted/MAP-r1.md").exists())
+        self.assertFalse((self.project / ".handoff/newbie-dev-buddy/maps/accepted/MAP-r1.md").exists())
 
     def test_conflicting_change_directory_cannot_consume_map_decision(self):
         proposal = self.proposal()
-        current = self.project / "docs/module-change/MODULES.md"
+        current = self.project / "docs/newbie-dev-buddy/MODULES.md"
         previous_digest = hashlib.sha256(current.read_bytes()).hexdigest()
-        change_directory = self.project / "docs/module-change/changes"
+        change_directory = self.project / "docs/newbie-dev-buddy/changes"
         change_directory.rmdir()
         change_directory.write_text("Synthetic conflicting file.\n")
         self.decision(proposal, ok=False)
         self.assertEqual(hashlib.sha256(current.read_bytes()).hexdigest(), previous_digest)
-        self.assertFalse((self.project / ".handoff/module-change/maps/accepted/MAP-r1.md").exists())
+        self.assertFalse((self.project / ".handoff/newbie-dev-buddy/maps/accepted/MAP-r1.md").exists())
 
     def test_malformed_change_record_does_not_half_apply_map_acceptance(self):
         updated = copy.deepcopy(self.mapping)
         updated["modules"][0]["name"] = "Updated synthetic name"
         proposal = self.proposal(updated)
-        current = self.project / "docs/module-change/MODULES.md"
+        current = self.project / "docs/newbie-dev-buddy/MODULES.md"
         previous_digest = hashlib.sha256(current.read_bytes()).hexdigest()
-        broken = self.project / ".handoff/module-change/drafts/C-BROKEN-r1.md"
+        broken = self.project / ".handoff/newbie-dev-buddy/drafts/C-BROKEN-r1.md"
         broken.parent.mkdir(parents=True, exist_ok=True)
         broken.write_text('---\n{"schema": 1}\n---\n\n# Synthetic malformed draft\n')
         self.decision(proposal, ok=False)
         self.assertEqual(hashlib.sha256(current.read_bytes()).hexdigest(), previous_digest)
-        self.assertFalse((self.project / ".handoff/module-change/maps/accepted/MAP-r1.md").exists())
+        self.assertFalse((self.project / ".handoff/newbie-dev-buddy/maps/accepted/MAP-r1.md").exists())
 
     def test_map_update_preserves_old_proposal_scope_and_blocks_stale_start(self):
         spec = {"id": "C-001", "title": "Synthetic old scope", "primary": "M-OLD", "affected": [],

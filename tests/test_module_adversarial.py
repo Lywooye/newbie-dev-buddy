@@ -10,7 +10,7 @@ import unittest
 import test_workflow as fixtures
 
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts/module_change.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts/newbie_dev_buddy.py"
 
 
 @unittest.skipUnless(shutil.which("node"), "Node required for the synthetic checker")
@@ -27,7 +27,7 @@ class ModuleAdversarialTests(unittest.TestCase):
         (self.project / "src/ui.txt").write_text("Synthetic UI source.\n")
         (self.project / "tests").mkdir(exist_ok=True)
         (self.project / "tests/data.py").write_text("Synthetic behavioral test input.\n")
-        path = self.project / "docs/module-change/MODULES.md"
+        path = self.project / "docs/newbie-dev-buddy/MODULES.md"
         header, body = path.read_text()[4:].split("\n---\n", 1)
         mapping = json.loads(header)
         value = {"policy": "required" if required else "on-change"}
@@ -210,7 +210,7 @@ class ModuleAdversarialTests(unittest.TestCase):
 
     def test_failed_on_change_check_blocks_gate_after_all_required_checks_pass(self):
         self.configure(integration="required")
-        path = self.project / "docs/module-change/MODULES.md"
+        path = self.project / "docs/newbie-dev-buddy/MODULES.md"
         header, body = path.read_text()[4:].split("\n---\n", 1)
         mapping = json.loads(header)
         mapping["modules"][1]["verification"] = {"policy": "on-change", **self.profile("ui")}

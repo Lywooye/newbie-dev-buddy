@@ -1,4 +1,4 @@
 interface:
   display_name: "小白开发搭子"
   short_description: "先划分新项目模块或梳理已有代码，用易懂方案引导确认、开发与验收，并保留历史"
-  default_prompt: "使用 $module-change-workflow 帮我规划新项目或梳理已有项目，用易懂的语言提出模块和开发方案，确认后实施并保存记录与可选验收证据。"
+  default_prompt: "使用 $newbie-dev-buddy 帮我规划新项目或梳理已有项目，用易懂的语言提出模块和开发方案，确认后实施并保存记录与可选验收证据。"

@@ -12,21 +12,21 @@
 
 | 位置 | 角色 |
 |---|---|
-| `docs/module-change/MODULES.md` | 当前确认的模块、关系、契约及可选验收配置 |
-| `docs/module-change/changes/` | 已接受的具体修改版本 |
-| `.handoff/module-change/discovery/` | 扫描清单、来源指纹及覆盖记录 |
-| `.handoff/module-change/maps/drafts/`、`maps/accepted/` | 地图候选及接受版本 |
-| `.handoff/module-change/maps/rejected/`、`maps/history/` | 地图拒绝决定及旧总览完整内容 |
-| `.handoff/module-change/drafts/` | 修改候选与修订 |
-| `.handoff/module-change/decisions/` | 拒绝决定 |
-| `.handoff/module-change/records/` | 实施、中断与验收事件 |
-| `.handoff/module-change/CURRENT.md`、`HISTORY.md` | 派生导航索引 |
+| `docs/newbie-dev-buddy/MODULES.md` | 当前确认的模块、关系、契约及可选验收配置 |
+| `docs/newbie-dev-buddy/changes/` | 已接受的具体修改版本 |
+| `.handoff/newbie-dev-buddy/discovery/` | 扫描清单、来源指纹及覆盖记录 |
+| `.handoff/newbie-dev-buddy/maps/drafts/`、`maps/accepted/` | 地图候选及接受版本 |
+| `.handoff/newbie-dev-buddy/maps/rejected/`、`maps/history/` | 地图拒绝决定及旧总览完整内容 |
+| `.handoff/newbie-dev-buddy/drafts/` | 修改候选与修订 |
+| `.handoff/newbie-dev-buddy/decisions/` | 拒绝决定 |
+| `.handoff/newbie-dev-buddy/records/` | 实施、中断与验收事件 |
+| `.handoff/newbie-dev-buddy/CURRENT.md`、`HISTORY.md` | 派生导航索引 |
 
 具体路径以命令返回为准，不能删除记录后靠索引恢复。
 
 模块总览和方案 Markdown 用 JSON 对象作为合法 YAML frontmatter；结构字段与正文共同构成文档。输入 JSON 是 CLI 传输材料，不再维护第二份相互竞争的权威 JSON。需要更新已接受地图时使用地图修订；需要更新已接受方案时新建方案修订。
 
-备份同时保留 `docs/module-change/` 和 `.handoff/module-change/`。只有导航索引可重建；从 Kit 输入排除记录目录不等于从备份排除。
+备份同时保留 `docs/newbie-dev-buddy/` 和 `.handoff/newbie-dev-buddy/`。只有导航索引可重建；从 Kit 输入排除记录目录不等于从备份排除。
 
 ## 提出修改
 
@@ -60,9 +60,9 @@
 
 ## 可选模块验收
 
-按 [verification.md](verification.md) 配置模块和集成检查。先核对 Kit、配置与命令；用户选择检查或已确认策略授权后，`run-checks` 实际运行选中的 Kit 配置。已有报告用 `verify --check-id` 复核覆盖；兼容的无 `--check-id` 入口只保存整体验证记录。
+按 [verification.md](verification.md) 配置模块和集成检查。先核对 Kit、配置与命令；用户选择检查或已确认策略授权后，`run-checks` 实际运行选中的 Kit 配置。已有报告用 `verify --check-id` 复核覆盖；无 `--check-id` 时只保存整体验证记录。
 
-先完成代码、文档、配置和测试，再运行验收。配置应排除生成的 `.handoff/module-change/` 或 `.handoff`，保留相关代码和文档。工具不会为通过而自动扩大排除范围。
+先完成代码、文档、配置和测试，再运行验收。配置应排除生成的 `.handoff/newbie-dev-buddy/` 或 `.handoff`，保留相关代码和文档。工具不会为通过而自动扩大排除范围。
 
 失败、缺失、过期和检查器错误如实记录。不伪造 Kit 报告、不把未启用算通过、不把单模块通过当作集成通过。`status` 不调用 Kit；复用历史结论前再次 `verify`。
 

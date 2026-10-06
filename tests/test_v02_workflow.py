@@ -10,7 +10,7 @@ import unittest
 import test_workflow as fixtures
 
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts/module_change.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts/newbie_dev_buddy.py"
 
 
 class MapWorkflowTests(unittest.TestCase):
@@ -53,7 +53,7 @@ class MapWorkflowTests(unittest.TestCase):
 
     def test_scan_is_not_acceptance_and_adoption_keeps_old_format(self):
         candidate = self.candidate()
-        self.assertFalse((self.project / "docs/module-change/MODULES.md").exists())
+        self.assertFalse((self.project / "docs/newbie-dev-buddy/MODULES.md").exists())
         accepted = self.decide(candidate)
         self.assertEqual(accepted["status"]["map_revision"], 1)
         self.assertEqual(accepted["status"]["modules"][0]["id"], "M-DATA")
@@ -80,19 +80,19 @@ class MapWorkflowTests(unittest.TestCase):
         candidate = self.candidate()
         self.decide(candidate, "reject")
         self.assertTrue((self.project / candidate["path"]).is_file())
-        self.assertFalse((self.project / "docs/module-change/MODULES.md").exists())
+        self.assertFalse((self.project / "docs/newbie-dev-buddy/MODULES.md").exists())
         self.decide(candidate, ok=False)
 
     def test_map_update_keeps_previous_bytes_and_module_ids(self):
         first = self.decide(self.candidate())
-        map_path = self.project / "docs/module-change/MODULES.md"
+        map_path = self.project / "docs/newbie-dev-buddy/MODULES.md"
         before = map_path.read_bytes()
         revised = json.loads(json.dumps(self.mapping))
         revised["modules"][0]["name"] = "Renamed data"
         candidate = self.candidate(revised)
         self.assertEqual(candidate["difference"]["changed"], ["M-DATA"])
         second = self.decide(candidate)
-        archive = self.project / ".handoff/module-change/maps/history" / (first["map_digest"] + ".md")
+        archive = self.project / ".handoff/newbie-dev-buddy/maps/history" / (first["map_digest"] + ".md")
         self.assertEqual(archive.read_bytes(), before)
         self.assertEqual(second["status"]["modules"][0]["id"], "M-DATA")
 
@@ -152,10 +152,10 @@ class ModuleEvidenceTests(unittest.TestCase):
     def configure(self):
         (self.project / "tests").mkdir()
         (self.project / "tests/value.py").write_text("assert True\n")
-        config = {"schema": 1, "name": "Synthetic value checks", "exclude": [".handoff/module-change"],
+        config = {"schema": 1, "name": "Synthetic value checks", "exclude": [".handoff/newbie-dev-buddy"],
                   "steps": [{"id": "value", "command": ["node", "tests/value.mjs"], "format": "checks"}]}
         (self.project / "acceptance.value.json").write_text(json.dumps(config))
-        path = self.project / "docs/module-change/MODULES.md"
+        path = self.project / "docs/newbie-dev-buddy/MODULES.md"
         # Synthetic fixture configuration before proposing; no simulated user record is modified.
         text = path.read_text()
         header, body = text[4:].split("\n---\n", 1)

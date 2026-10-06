@@ -4,9 +4,9 @@
 
 面向非程序员的 AI 开发工作流：你描述想做什么，AI 提出模块划分和开发方案，你确认后再实施。新项目先设计模块，已有项目先梳理代码；模块结构、已确认方案、实施过程和可选验收证据保存在 Markdown 中，方便下次继续。
 
-这是供 AI 编程助手使用的本地 Skill，配套 Python CLI 保存记录。技术安装标识和调用名继续使用 `module-change-workflow`，保持已有安装与项目记录兼容。
+这是供 AI 编程助手使用的本地 Skill，安装名和调用名为 `newbie-dev-buddy`，配套 Python CLI 保存记录。
 
-**v0.2.1 为实验版本。** 当前验证来自合成项目和外部 Kit 小样例，尚未在用户生产项目中评估，也没有优于其他工具的比较证据。生成的流程正文目前为中文；用户输入的名称、契约、方案和说明保留原语言。
+**v0.3.0 为实验版本。** 当前验证来自合成项目和外部 Kit 小样例，尚未在用户生产项目中评估，也没有优于其他工具的比较证据。生成的流程正文目前为中文；用户输入的名称、契约、方案和说明保留原语言。
 
 ## 它解决什么
 
@@ -26,22 +26,22 @@
 - `run-checks` 与 `verify` 可选，需要 Node.js 和可信兼容的 Acceptance Kit。集成使用 Kit 0.1.2，要求 Node.js 22 及以上；仓库不附带或自动安装 Kit。
 - 使用代理指令需要支持本地 Skill 的宿主；CLI 也可直接使用。CodeGraph、Understand Anything 是可选分析来源，不是依赖。
 
-把源码放入名为 `module-change-workflow` 的目录，从其父目录安装；脚本拒绝覆盖已有部署：
+把源码放入名为 `newbie-dev-buddy` 的目录，从其父目录安装；脚本拒绝覆盖已有部署：
 
 ```sh
 (
   set -eu
   skill_root="${CODEX_HOME:-$HOME/.codex}/skills"
-  skill_target="$skill_root/module-change-workflow"
+  skill_target="$skill_root/newbie-dev-buddy"
   if [ -e "$skill_target" ] || [ -L "$skill_target" ]; then
     printf '%s\n' '目标已存在，更新前请检查。' >&2
     exit 1
   fi
   mkdir -p "$skill_root"
   mkdir "$skill_target"
-  cp ./module-change-workflow/SKILL.md "$skill_target/"
-  cp -R ./module-change-workflow/agents ./module-change-workflow/references \
-    ./module-change-workflow/scripts "$skill_target/"
+  cp ./newbie-dev-buddy/SKILL.md "$skill_target/"
+  cp -R ./newbie-dev-buddy/agents ./newbie-dev-buddy/references \
+    ./newbie-dev-buddy/scripts "$skill_target/"
 )
 ```
 
@@ -51,7 +51,7 @@
 
 先读 [新手使用指引](references/beginner-guide.md)：包含准备步骤、新建项目、修改项目和换对话继续的提示词。
 
-对目标项目调用 `$module-change-workflow`：
+对目标项目调用 `$newbie-dev-buddy`：
 
 新项目可以这样开始：
 
@@ -80,29 +80,29 @@
 以下命令从源码目录调用。路径、名称和 SHA 是合成示例，实际扫描路径、修订号与 digest 从 JSON 返回取得。
 
 ```sh
-python3 scripts/module_change.py scan --project ./sample-project --exclude private
-python3 scripts/module_change.py map-propose --project ./sample-project \
-  --scan .handoff/module-change/discovery/S-SCAN.md --map-json ./map.json
+python3 scripts/newbie_dev_buddy.py scan --project ./sample-project --exclude private
+python3 scripts/newbie_dev_buddy.py map-propose --project ./sample-project \
+  --scan .handoff/newbie-dev-buddy/discovery/S-SCAN.md --map-json ./map.json
 ```
 
-生成的 map/spec JSON 建议放在项目 `.handoff/module-change/inputs/` 或项目外临时目录，避免写进受检源码使扫描过期；权威内容仍为模块总览和版本 Markdown。
+生成的 map/spec JSON 建议放在项目 `.handoff/newbie-dev-buddy/inputs/` 或项目外临时目录，避免写进受检源码使扫描过期；权威内容仍为模块总览和版本 Markdown。
 
 读取完整候选。用户接受该版本后，把实际确认写入 `map-note.md`，使用返回的修订号和 SHA：
 
 ```sh
-python3 scripts/module_change.py map-decide --project ./sample-project \
+python3 scripts/newbie_dev_buddy.py map-decide --project ./sample-project \
   --revision MAP_REVISION --expect-digest MAP_CANDIDATE_SHA \
   --decision accept --note-file ./map-note.md
 ```
 
-首次接受建立 `docs/module-change/MODULES.md`；后续接受保留旧图并更新当前图。说明文件记录已发生的确认，本身不能产生授权。
+首次接受建立 `docs/newbie-dev-buddy/MODULES.md`；后续接受保留旧图并更新当前图。说明文件记录已发生的确认，本身不能产生授权。
 
 准备完整 `spec.json`，包含变更 ID、主模块、关联模块、位置、方案和可观察验收条件。依次 `propose`、展示并 `decide`、记录 `started`、实施、记录 `implemented`。字段与合成示例见 [CLI](references/cli.md)。
 
 选中检查已获得授权且有可信 Kit 后：
 
 ```sh
-python3 scripts/module_change.py run-checks --project ./sample-project \
+python3 scripts/newbie_dev_buddy.py run-checks --project ./sample-project \
   --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA \
   --kit ./acceptance-kit --check-id module:M-EXPORT
 ```
@@ -110,21 +110,21 @@ python3 scripts/module_change.py run-checks --project ./sample-project \
 也可通过项目已有流程先运行 Kit，再复核真实报告：
 
 ```sh
-python3 scripts/module_change.py verify --project ./sample-project \
+python3 scripts/newbie_dev_buddy.py verify --project ./sample-project \
   --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA \
   --kit ./acceptance-kit --receipt .acceptance/example-run/report.json \
   --check-id module:M-EXPORT
 ```
 
-`run-checks` 先核对冻结配置，再以调用者权限执行选中配置的全部步骤，不是沙箱；开始实施后更换检查命令须修订并确认；`verify` 调用所选 Kit 检查器，但不运行项目测试。先核对 Kit 和配置，从验收输入排除生成的 `.handoff/module-change/`，同时保留相关文档。没有 Kit 时记录待验项，不制造通过报告。
+`run-checks` 先核对冻结配置，再以调用者权限执行选中配置的全部步骤，不是沙箱；开始实施后更换检查命令须修订并确认；`verify` 调用所选 Kit 检查器，但不运行项目测试。先核对 Kit 和配置，从验收输入排除生成的 `.handoff/newbie-dev-buddy/`，同时保留相关文档。没有 Kit 时记录待验项，不制造通过报告。
 
 `status` 只读状态，不重跑 Kit，沿用历史结果前应再次复核。`refresh` 只重建索引，不重新梳理代码。参数错误退出码为 1；已完成但失败或过期的验收退出码为 2，同时检查 JSON 和退出码。
 
-## 记录与兼容
+## 记录与交接
 
-当前结构在 `docs/module-change/MODULES.md`；已接受修改在 `docs/module-change/changes/`。扫描、地图历史、候选、决定和事件保存在 `.handoff/module-change/`。两部分一起备份；只有 `CURRENT.md`、`HISTORY.md` 导航索引可以重建。
+当前结构在 `docs/newbie-dev-buddy/MODULES.md`；已接受修改在 `docs/newbie-dev-buddy/changes/`。扫描、地图历史、候选、决定和事件保存在 `.handoff/newbie-dev-buddy/`。两部分一起备份；只有 `CURRENT.md`、`HISTORY.md` 导航索引可以重建。
 
-v0.1.1 地图无需补充验收字段即可读取；原 `init`、修改输入格式和未指定检查的 `verify` 保持可用。地图更新不改写已接受方案，也不悄悄扩大旧方案路径范围。未指定检查的整体验证报告作为历史证据保留，不自动分配给各模块。
+地图更新不改写已接受方案，也不悄悄扩大旧方案路径范围。未指定检查的整体验证报告作为历史证据保留，不自动分配给各模块。
 
 记录默认留在本地。相对链接便于移动，但输入、文件线索和 Kit 输出仍可能带私密信息；工具不自动匿名化，分享前应检查。
 
