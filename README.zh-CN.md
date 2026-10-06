@@ -6,12 +6,12 @@
 
 这是供 AI 编程助手使用的本地 Skill，安装名和调用名为 `newbie-dev-buddy`，配套 Python CLI 保存记录。
 
-**v0.3.0 为实验版本。** 当前验证来自合成项目和外部 Kit 小样例，尚未在用户生产项目中评估，也没有优于其他工具的比较证据。生成的流程正文目前为中文；用户输入的名称、契约、方案和说明保留原语言。
+**v0.4.0 为实验版本。** 当前验证来自合成项目和外部 Kit 小样例，尚未在用户生产项目中评估，也没有优于其他工具的比较证据。生成的流程正文目前为中文；用户输入的名称、契约、方案和说明保留原语言。
 
 ## 它解决什么
 
 - **新项目先设计模块。** AI 根据需求提出各模块的职责、输入输出和关系，用易懂的说明供你确认；确认后通过 `init` 保存初始结构。代码路径可以尚未存在，计划与已实现状态分开记录；CLI 本身不设计架构。
-- **从现有代码开始。** `scan` 保存结构清单和来源指纹；AI 或贡献者核对源码、按职责分组；`map-propose` 展示候选地图、差异、未分配文件和路径重叠。Python 可提取符号和导入语法事实，其他语言目前只生成文件清单。CLI 不自动推断业务模块，也不自动重构。
+- **从现有代码开始。** `scan` 保存结构清单和来源指纹；AI 或贡献者核对源码、按职责分组；`map-propose` 展示候选地图、差异、未分配文件和路径重叠。内置扫描提取 Python 语法观察，其他语言生成文件清单；可选 CodeGraph 为 AI 补充多语言结构依据。两者都不能自动确认业务模块，也不自动重构。
 - **结构也有历史。** 确认具体地图版本，保留旧图；改名、移动保留模块 ID，拆分、合并、退休记录对应关系，旧 ID 不重复使用。
 - **确认的是具体方案。** 接受前检查完整 Markdown SHA、最新修订和项目基线。新版本替换旧方案时，旧记录仍然保留。
 - **按模块选择验收。** 项目默认策略可由模块覆盖，并可配置跨模块检查。方案冻结配置 SHA 和 JSON 内容、步骤及声明输入；有配置时，配置与声明源码、测试须先存在且未被排除，新测试先准备再提案；整项目报告通过不会自动把所有模块标成已检查。
@@ -22,36 +22,41 @@
 
 ## 要求与安装
 
-- Python 3.9 及以上；核心 CLI 只用标准库。扫描当前需要 macOS 或 Linux 的目录相对读取接口。
-- `run-checks` 与 `verify` 可选，需要 Node.js 和可信兼容的 Acceptance Kit。集成使用 Kit 0.1.2，要求 Node.js 22 及以上；仓库不附带或自动安装 Kit。
-- 使用代理指令需要支持本地 Skill 的宿主；CLI 也可直接使用。CodeGraph、Understand Anything 是可选分析来源，不是依赖。
+- Python 3.9 及以上。安装器只用标准库；核心项目流程当前仍需要 macOS/Linux 的安全目录相对读取接口。
+- 能发现本地 Skill、操作项目文件的 AI 编程助手。安装器提供 Codex、Claude Code、Cursor、Windsurf/Cascade、Copilot CLI、WorkBuddy、CodeBuddy、OpenCode、pi、ZCode、DeepSeek Harness 和 Trae 的适配。目录、调用方式与限制见[宿主支持](references/agent-support.md)。
+- `run-checks` 与 `verify` 可选，需要可信兼容的 Acceptance Kit；独立 Kit 0.1.2 要求 Node.js 22 及以上，本工具不自动安装 Kit。
 
-把源码放入名为 `newbie-dev-buddy` 的目录，从其父目录安装；脚本拒绝覆盖已有部署：
+下载源码，进入目录，先预览你选定的宿主：
 
 ```sh
-(
-  set -eu
-  skill_root="${CODEX_HOME:-$HOME/.codex}/skills"
-  skill_target="$skill_root/newbie-dev-buddy"
-  if [ -e "$skill_target" ] || [ -L "$skill_target" ]; then
-    printf '%s\n' '目标已存在，更新前请检查。' >&2
-    exit 1
-  fi
-  mkdir -p "$skill_root"
-  mkdir "$skill_target"
-  cp ./newbie-dev-buddy/SKILL.md "$skill_target/"
-  cp -R ./newbie-dev-buddy/agents ./newbie-dev-buddy/references \
-    ./newbie-dev-buddy/scripts "$skill_target/"
-)
+git clone https://github.com/Lywooye/newbie-dev-buddy.git
+cd newbie-dev-buddy
+python3 scripts/install.py --agent codex --dry-run
+python3 scripts/install.py --agent codex
 ```
 
-按宿主说明重新加载 Skill。已由 Skills 管理器部署时，通过管理器更新，不直接覆盖其文件。
+**默认基础安装**，只安装搭子。**增强安装**会复用兼容的 CodeGraph；未找到时，下载固定的官方 v1.6.2 发布包并核对 SHA-256，再准备所选宿主的 MCP 配置。不自动升级已有工具，也不自动给项目建索引。
+
+想把增强版装进一个项目，替换示例路径并先预览：
+
+```sh
+python3 scripts/install.py --agent opencode --mode enhanced \
+  --scope project --project /path/to/project --dry-run
+python3 scripts/install.py --agent opencode --mode enhanced \
+  --scope project --project /path/to/project
+```
+
+在交互终端中不带参数运行，可进入简短安装向导；`--list-agents` 查看可选宿主。`install.sh` 和 `install.ps1` 把同样的参数交给 Python。重复 `--agent` 可选多个宿主，不修改未选宿主。不同的已有部署不会被覆盖；由 Skills 管理器管理的安装，通过原管理器更新。
+
+严格 JSON 的 MCP 文件可以合并，并保留其他设置；TOML、JSONC、DeepSeek overlay 或未确认的全局路径，会生成独立候选文件供手动应用。文件安装、配置应用、MCP 连接、模型实际调用是不同结果；看清安装输出，再按[宿主说明](references/agent-support.md)继续。
+
+**Windows：**提供 PowerShell 包装和 CodeGraph 发布包选择，尚未在真实 Windows 主机验证，也不等于核心流程已原生兼容 Windows。建议在 WSL 内完成整套工作流：助手、Python、搭子和 CodeGraph 都装在同一个 Linux 环境，避免混用 Windows 与 WSL 的程序和项目路径。详见 [CodeGraph 接入](references/codegraph.md)。
 
 ## 如何使用
 
 先读 [新手使用指引](references/beginner-guide.md)：包含准备步骤、新建项目、修改项目和换对话继续的提示词。
 
-对目标项目调用 `$newbie-dev-buddy`：
+Codex 中对目标项目调用 `$newbie-dev-buddy`；其他助手使用[对应调用方式](references/agent-support.md#host-paths-and-invocation)：
 
 新项目可以这样开始：
 
@@ -69,7 +74,7 @@
 → 实施 → 运行选中检查 → 复核并保存证据
 ```
 
-梳理默认记录当前实现；建议的架构调整另提修改方案。扫描不安装插件、不执行项目脚本、不转向其他工作区，也不上传源码。
+梳理默认记录当前实现；建议的架构调整另提修改方案。扫描不安装插件、不执行项目脚本、不转向其他工作区，也不上传源码。增强安装是另一个明确动作，CodeGraph 的建索引和网络行为有自己的边界。
 
 输入文件、命令和技术字段由 AI 编程助手准备；你主要确认要做什么、会影响什么、怎样判断完成。下面的 CLI 部分供直接调用或排查流程时参考。
 
@@ -128,7 +133,7 @@ python3 scripts/newbie_dev_buddy.py verify --project ./sample-project \
 
 记录默认留在本地。相对链接便于移动，但输入、文件线索和 Kit 输出仍可能带私密信息；工具不自动匿名化，分享前应检查。
 
-详细说明见 [梳理现有项目](references/discovery.md)、[流程](references/workflow.md)、[模块验收](references/verification.md)、[CLI](references/cli.md) 与 [安全边界](SECURITY.md)。
+接入的价值在于：把代码结构依据连接到人工决策、Markdown 历史和可选验收。搭子调用外部 CodeGraph，不复制它的引擎，也不替代它的图谱。详细说明见 [CodeGraph 接入](references/codegraph.md)、[宿主支持](references/agent-support.md)、[梳理现有项目](references/discovery.md)、[流程](references/workflow.md)、[模块验收](references/verification.md)、[CLI](references/cli.md) 与 [安全边界](SECURITY.md)。
 
 ## 开发验证
 

@@ -2,7 +2,7 @@
 name: newbie-dev-buddy
 description: "小白开发搭子：先设计新项目模块或梳理已有项目，再确认开发方案、保留 Markdown 历史并按模块选择已有 Acceptance Kit 验收。适用于新项目模块规划、已有项目维护及跨次交接。"
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # 小白开发搭子 · Newbie Dev Buddy
@@ -11,13 +11,13 @@ metadata:
 
 由代理准备输入文件并调用 CLI；向用户先展示模块职责、方案选择、影响和可观察结果，用易懂的语言解释必要术语。用户确认业务与开发决策，完整技术字段保留在记录中，不要求用户手写 JSON、命令或 digest。
 
-用户需要入门指引时，使用 [新手使用指引](references/beginner-guide.md) 中的场景与提示词。
+用户需要入门指引时，使用 [新手使用指引](references/beginner-guide.md) 中的场景与提示词。安装、切换宿主或排查发现问题时读 [宿主支持](references/agent-support.md)；使用或安装可选 CodeGraph 时读 [CodeGraph 接入](references/codegraph.md)。这些参考只在相关场景加载。
 
 ## 进入项目
 
 1. 先读项目规则和可靠的既有领域流程。保持用户指定的项目根；不自动转到主工作区，也不自动安装分析插件、执行构建或启动服务。
 2. 新项目先明确第一版需求范围，提出模块职责、输入输出、依赖和可观察完成条件。用户确认初始结构后，准备 `map-json` 与实际确认说明，用 `init` 保存；代码路径可以尚未存在。设计属于计划，不标成已实现；尚无配置或测试时记录待验项。
-3. 既有项目先用 `scan` 保存结构清单，核对入口、职责、接口、数据流及现有测试。扫描不是业务模块识别；结合源码分组，区分代码已核实、推断和待核实，列出排除项与覆盖缺口。已有 CodeGraph 或 Understand Anything 可作为可选证据来源，不是依赖或第二份权威地图。详细步骤见 [discovery.md](references/discovery.md)。
+3. 既有项目先用 `scan` 保存结构清单，核对入口、职责、接口、数据流及现有测试。扫描不是业务模块识别；结合源码分组，区分代码已核实、推断和待核实，列出排除项与覆盖缺口。已有 CodeGraph 时按 [接入规则](references/codegraph.md) 核对项目范围和索引同步状态，再查询结构与影响；缺失或覆盖不足时继续基础扫描与源码核对，如实说明缺口。CodeGraph 或 Understand Anything 是可选证据来源，不是依赖或第二份权威地图。详细步骤见 [discovery.md](references/discovery.md)。
 4. 既有项目用 `map-propose` 保存候选地图和来源指纹，展示模块职责、路径、关系、边界、未分配文件、重叠路径及变化。用户接受具体版本后，才用 `map-decide` 初始化或更新 `MODULES.md`；更换 ID、拆分、合并、退休需要明确对应关系。已有已确认结构可用 `init` 首次保存。
 5. 已登记项目先执行 `status`，读 `MODULES.md`、适用方案及实施记录。索引只是导航；旧验收是历史证据，沿用前需要再次复核。`refresh` 只重建索引，不重新分析代码。
 
@@ -38,6 +38,7 @@ metadata:
 - Kit 配置采用该 Kit 自己的格式，工具不自动修改它。`run-checks` 会执行配置中的命令，`verify` 会执行所选 Kit 的检查器；它们拥有调用者权限，不是操作系统沙箱。先核对 Kit 与命令是否可信。
 - `status` 不重跑 Kit。历史通过、当前指纹及 `delivery_ready` 只说明已配置证据门槛；不证明业务覆盖充分、架构合理或安全认证。
 - 扫描与记录默认留在本地，不自动上传；排除规则不是匿名化。输入、源码线索、记录和 Kit 输出仍可能含私密信息，分享前检查。
+- 增强安装可准备 CodeGraph 与所选宿主配置，但不自动建索引、改全局权限或信任设置。配置写入不是工具连接成功，也不是模型实际调用通过；Windows 安装入口不代表核心流程已原生兼容 Windows。
 - CLI 不执行 Markdown 中的任意命令，不认证人类同意，不阻止直接改文件，不建立后台或全局记忆。
 
 方案修订与恢复读 [workflow.md](references/workflow.md)；调用命令、输入字段和排错读 [cli.md](references/cli.md)。可执行工具为 `scripts/newbie_dev_buddy.py`，核心仅依赖 Python 3.9 及以上标准库。

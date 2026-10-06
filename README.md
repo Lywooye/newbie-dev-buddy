@@ -6,12 +6,12 @@ A local Skill for beginners building software with AI. Describe what you want to
 
 The Chinese product name is **小白开发搭子**. Install and invoke the Skill as `newbie-dev-buddy`; the companion Python CLI maintains the records.
 
-**Version 0.3.0 is experimental.** The workflow has synthetic validation and small external-Kit integration examples; it has not been evaluated on a user's production project or shown to outperform other tools. Generated workflow prose is currently Chinese; supplied names, contracts, plans, and notes retain their language.
+**Version 0.4.0 is experimental.** The workflow has synthetic validation and small external-Kit integration examples; it has not been evaluated on a user's production project or shown to outperform other tools. Generated workflow prose is currently Chinese; supplied names, contracts, plans, and notes retain their language.
 
 ## What it helps with
 
 - **Design modules before starting a new project.** The agent proposes responsibilities, inputs, outputs, and relationships in plain language. After review, `init` saves the accepted initial map. Planned code paths may not exist yet; plans and implemented states remain separate. The CLI itself does not design architecture.
-- **Start with existing code.** `scan` records a structural inventory and fingerprints. An agent or contributor checks code and groups responsibilities; `map-propose` makes that map reviewable, including differences, unassigned files, and overlapping paths. Python symbols and imports are syntax observations; other languages currently receive file inventory only. The CLI does not automatically infer business modules or refactor code.
+- **Start with existing code.** `scan` records a structural inventory and fingerprints. An agent or contributor checks code and groups responsibilities; `map-propose` makes that map reviewable, including differences, unassigned files, and overlapping paths. The built-in scanner extracts Python syntax observations and inventories other languages. Optional CodeGraph adds multi-language structural evidence for the agent to review. Neither tool automatically establishes business modules or refactors code.
 - **Keep structure history.** Accept a specific map revision, retain earlier maps, and preserve module IDs through renames and moves. Splits, merges, and retirements require explicit lineage; retired IDs cannot be recycled.
 - **Approve an exact plan.** Change decisions check the complete candidate Markdown digest, latest revision, and tracked baseline. Accepted revisions remain available when a later plan replaces them.
 - **Choose module checks.** Set a project default, override a module, and add cross-module integration checks. Each change proposal freezes the configuration SHA and JSON content, required steps, and declared inputs. Configured source/test inputs must exist and remain covered before proposing; prepare new test files first. A passing project report does not automatically mark every module as checked.
@@ -22,36 +22,41 @@ The records support review and handoff. They do not authenticate consent, preven
 
 ## Requirements and installation
 
-- Python 3.9 or later; the core CLI uses only the standard library. Discovery currently requires safe Unix directory-relative I/O on macOS or Linux.
-- Node.js and a trusted compatible Acceptance Kit are optional, needed only for `run-checks` and `verify`. Integration uses Acceptance Kit 0.1.2, which requires Node.js 22 or later. The Kit is not bundled or installed automatically.
-- A local Skill host is needed for the agent instructions; the CLI also works directly. CodeGraph and Understand Anything are optional analysis sources, not dependencies.
+- Python 3.9 or later. The installer uses the standard library; the core project workflow currently requires safe Unix directory-relative I/O on macOS or Linux.
+- A local coding agent with Skill discovery and project-file tools. The installer has adapters for Codex, Claude Code, Cursor, Windsurf/Cascade, Copilot CLI, WorkBuddy, CodeBuddy, OpenCode, pi, ZCode, DeepSeek Harness, and Trae. See [host paths, invocation, and limits](references/agent-support.md).
+- Node.js and a trusted compatible Acceptance Kit are optional for `run-checks` and `verify`. The separate Kit 0.1.2 requires Node.js 22 or later and is not installed by this tool.
 
-Copy the source into a directory named `newbie-dev-buddy`. From its parent, install the Skill without overwriting an existing deployment:
+Download the source, open its directory, and preview installation for your chosen agent:
 
 ```sh
-(
-  set -eu
-  skill_root="${CODEX_HOME:-$HOME/.codex}/skills"
-  skill_target="$skill_root/newbie-dev-buddy"
-  if [ -e "$skill_target" ] || [ -L "$skill_target" ]; then
-    printf '%s\n' 'Destination already exists; inspect it before updating.' >&2
-    exit 1
-  fi
-  mkdir -p "$skill_root"
-  mkdir "$skill_target"
-  cp ./newbie-dev-buddy/SKILL.md "$skill_target/"
-  cp -R ./newbie-dev-buddy/agents ./newbie-dev-buddy/references \
-    ./newbie-dev-buddy/scripts "$skill_target/"
-)
+git clone https://github.com/Lywooye/newbie-dev-buddy.git
+cd newbie-dev-buddy
+python3 scripts/install.py --agent codex --dry-run
+python3 scripts/install.py --agent codex
 ```
 
-Reload Skills according to your host's instructions. If a Skills manager owns the deployment, update it through that manager rather than overwriting its files.
+**Basic installation is the default:** install the Skill only. **Enhanced installation** also reuses a compatible CodeGraph or downloads the pinned official v1.6.2 release with SHA-256 verification, then prepares the selected host's MCP configuration. It does not upgrade an existing tool or index a project automatically.
+
+For enhanced installation into one project, replace the example path and preview first:
+
+```sh
+python3 scripts/install.py --agent opencode --mode enhanced \
+  --scope project --project /path/to/project --dry-run
+python3 scripts/install.py --agent opencode --mode enhanced \
+  --scope project --project /path/to/project
+```
+
+Run without arguments in an interactive terminal for the small setup wizard, or use `--list-agents` to see adapters. `install.sh` and `install.ps1` forward the same options to Python. Multiple `--agent` options select multiple hosts; no other host is changed. Existing different deployments are not overwritten. Update a Skills-manager-owned installation through its manager.
+
+Strict JSON MCP files can be merged while retaining unrelated settings. TOML, JSONC, DeepSeek overlays, and unconfirmed global paths receive a separate candidate for manual application. Installing files, applying configuration, connecting MCP, and invoking tools through a model are different results; inspect the installer output and [host-specific next steps](references/agent-support.md).
+
+**Windows:** the provided PowerShell wrapper and CodeGraph asset choices are not real Windows-host validation and do not make the core project workflow Windows-native. Use WSL for the whole workflow, installing the host, Python, Buddy, and CodeGraph in the same Linux environment; do not mix Windows and WSL executable or project paths. See [CodeGraph setup and boundaries](references/codegraph.md).
 
 ## Use with an agent
 
 Start with the [beginner guide in Chinese](references/beginner-guide.md), including setup, new projects, changes, and continuing in another conversation.
 
-Invoke `$newbie-dev-buddy` for the intended project:
+In Codex, invoke `$newbie-dev-buddy` for the intended project. Other hosts have [their own invocation forms](references/agent-support.md#host-paths-and-invocation):
 
 For a new project:
 
@@ -69,7 +74,7 @@ Clarify new-project requirements or inspect existing code → propose a module m
 → implement → run selected checks → recheck and record evidence
 ```
 
-Discovery documents the current implementation. A suggested redesign becomes a separate change proposal. Scanning does not install tools, execute project scripts, redirect to another worktree, or upload code.
+Discovery documents the current implementation. A suggested redesign becomes a separate change proposal. Scanning does not install tools, execute project scripts, redirect to another worktree, or upload code. Enhanced installation is a separate explicit action; CodeGraph has its own indexing and network boundaries.
 
 The coding agent prepares input files, commands, and technical fields. You review what will be built, what it affects, and how completion will be checked. The CLI reference below supports direct use and troubleshooting.
 
@@ -128,7 +133,7 @@ Updating the map does not rewrite accepted changes or silently expand their trac
 
 Records are local by default. Relative links help portability, but inputs, paths, findings, and Kit output may contain private information. There is no automatic anonymization; inspect records before publishing.
 
-See [discovery](references/discovery.md), [workflow](references/workflow.md), [module verification](references/verification.md), [CLI](references/cli.md), and [security](SECURITY.md).
+The advantage of this integration is the link from code evidence to a reviewed decision, retained Markdown history, and optional acceptance evidence. Buddy uses CodeGraph as an external analyzer; it does not copy its engine or replace its graph. See [CodeGraph](references/codegraph.md), [agent support](references/agent-support.md), [discovery](references/discovery.md), [workflow](references/workflow.md), [module verification](references/verification.md), [CLI](references/cli.md), and [security](SECURITY.md).
 
 ## Development
 
