@@ -27,7 +27,7 @@ macOS/Linux 可以用 `sh install.sh`；PowerShell 可以用 `.\install.ps1`，�
 .\install.ps1 --agent codebuddy --mode enhanced --dry-run
 ```
 
-包装脚本不安装 Python 或助手本身。核心项目流程仍要求 macOS/Linux；PowerShell 包装尚未在真实 Windows 主机验证；Windows 的完整工作流请放在同一个 WSL 环境，详见 [CodeGraph 接入](codegraph.md#windows)。
+包装脚本不安装 Python 或助手本身。核心项目流程仍要求 macOS/Linux；CI 包含 Windows 安装夹具与 PowerShell 预览，用户 Windows 主机的完整助手会话尚未验证；Windows 的完整工作流请放在同一个 WSL 环境，详见 [CodeGraph 接入](codegraph.md#windows)。
 
 ## Host paths and invocation
 

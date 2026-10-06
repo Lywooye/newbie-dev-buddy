@@ -66,7 +66,7 @@ class InstallTests(unittest.TestCase):
         (self.source / ".git/private").write_text("SYNTHETIC_PRIVATE_EXTRA", encoding="utf-8")
         destination = self.home / "skills/buddy"
         self.assertEqual(INSTALL.copy_skill(self.source, destination, self.package), "installed")
-        self.assertEqual({str(x.relative_to(destination)) for x in destination.rglob("*") if x.is_file()},
+        self.assertEqual({x.relative_to(destination).as_posix() for x in destination.rglob("*") if x.is_file()},
                          set(self.package))
 
     def test_unsafe_and_duplicate_manifest_entries_are_refused(self):
@@ -248,7 +248,9 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(first["candidate"], repeated["candidate"])
         self.assertEqual(first_path.read_bytes(), original)
         self.assertEqual(len(list((self.home / "setup/codex").glob("*.toml"))), 2)
-        self.assertIn(str(projects[1]), Path(second["candidate"]).read_text())
+        args_line = next(line for line in Path(second["candidate"]).read_text().splitlines()
+                         if line.startswith("args = "))
+        self.assertEqual(json.loads(args_line.split("=", 1)[1])[-2:], ["--path", str(projects[1])])
 
     def test_user_candidate_and_project_candidate_do_not_conflict(self):
         user = INSTALL.configure("deepseek-harness", None, self.graph, self.home / "setup")
@@ -256,8 +258,10 @@ class InstallTests(unittest.TestCase):
         project.mkdir()
         scoped = INSTALL.configure("deepseek-harness", None, self.graph, self.home / "setup", project=project)
         self.assertNotEqual(user["candidate"], scoped["candidate"])
-        self.assertNotIn(str(project), Path(user["candidate"]).read_text())
-        self.assertIn(str(project), Path(scoped["candidate"]).read_text())
+        user_args = json.loads(Path(user["candidate"]).read_text())[0]["insert"][0]["config"]["args"]
+        project_args = json.loads(Path(scoped["candidate"]).read_text())[0]["insert"][0]["config"]["args"]
+        self.assertNotIn(str(project), user_args)
+        self.assertEqual(project_args[-2:], ["--path", str(project)])
 
     def test_codebuddy_existing_fallback_is_selected_without_shadow_file(self):
         fallback = self.json_file(".codebuddy.json", {"mcpServers": {"synthetic": {"command": "synthetic"}}})
