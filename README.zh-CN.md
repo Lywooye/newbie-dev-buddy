@@ -2,11 +2,54 @@
 
 [English](README.md)
 
-面向非程序员的 AI 开发工作流：你描述想做什么，AI 提出模块划分和开发方案，你确认后再实施。新项目先设计模块，已有项目先梳理代码；模块结构、已确认方案、实施过程和可选验收证据保存在 Markdown 中，方便下次继续。
+**每次改动 清楚记录**
 
-这是供 AI 编程助手使用的本地 Skill，安装名和调用名为 `newbie-dev-buddy`，配套 Python CLI 保存记录。
+你说想法，搭子陪你一步步做。**小白开发搭子**让 AI 把技术方案解释清楚，你决定要做什么、哪些先不做；通过搭子流程进行的修改，会留下方案、决定和实施记录，方便下次继续。
 
-**v0.4.0 为实验版本。** 当前验证来自合成项目和外部 Kit 小样例，尚未在用户生产项目中评估，也没有优于其他工具的比较证据。生成的流程正文目前为中文；用户输入的名称、契约、方案和说明保留原语言。
+![小白开发搭子：每次改动，清楚记录。你说想法，一起定方案，改动留记录。](assets/promo.png)
+
+- **想法有人帮你拆：**让 AI 用日常语言解释各部分负责什么、怎样配合。
+- **能提意见：**不合适就改方案，确认你想要的那一版再实施。
+- **修改有迹可循：**模块结构、方案版本、决定和实施记录保存在本地 Markdown 中；新方案不会抹掉旧记录。
+
+这是给你现有 AI 编程助手使用的本地 Skill，安装名和调用名为 `newbie-dev-buddy`，配套 Python CLI 保存记录。
+
+[观看 / 下载短视频](assets/demo.mp4) · [自己复现这个例子](examples/bookmark-demo/README.md) · [新手使用指引](references/beginner-guide.md)
+
+<details>
+<summary>看看演示画面</summary>
+
+[![书签演示：三个模块、方案修订、实施结果与下次继续。](assets/demo-poster.png)](assets/demo.mp4)
+
+</details>
+
+视频用**预设对话＋真实 CLI 记录与程序结果**演示工作流。演示播放器是展示材料，不是工具自带的界面，也不是真实模型会话录屏。
+
+## 先试一张模块地图
+
+先装**基础版**即可，CodeGraph 和 Acceptance Kit 以后需要时再选。准备能发现本地 Skill、操作项目文件的编程助手，以及 macOS/Linux 上的 Python 3.9+；Windows 完整流程使用 WSL，助手与工具放在同一个 Linux 环境。
+
+已有搭子安装时先检查来源，由管理器管理的安装通过原管理器更新。首次安装到 Codex，下载源码后运行：
+
+```sh
+git clone https://github.com/Lywooye/newbie-dev-buddy.git
+cd newbie-dev-buddy
+python3 scripts/install.py --agent codex --dry-run
+python3 scripts/install.py --agent codex
+```
+
+随后在 Codex 中打开你要开发的项目，说：
+
+```text
+$newbie-dev-buddy
+先用我能理解的语言说明这个项目各部分负责什么、怎样配合。
+给我候选模块地图，列出待核实的地方，等我确认后再保存。
+如果是新项目，先帮我明确第一版要做什么。
+```
+
+安装后按输出完成宿主操作，并确认助手确实发现了 Skill。[其他助手与调用方式](references/agent-support.md) · [详细安装说明](#要求与安装)
+
+**v0.4.0 仍是实验版本。** 验证来自合成项目和外部 Kit 小样例，尚未在用户生产项目中评估，也没有优于其他工具的比较证据。流程正文目前为中文；你输入的名称、契约、方案和说明保留原语言。
 
 ## 它解决什么
 

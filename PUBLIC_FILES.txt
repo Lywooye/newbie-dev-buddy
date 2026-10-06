@@ -7,6 +7,14 @@ README.zh-CN.md
 SECURITY.md
 SKILL.md
 agents/openai.yaml
+assets/demo-poster.png
+assets/demo.mp4
+assets/promo-copy.md
+assets/promo.png
+examples/bookmark-demo/README.md
+examples/bookmark-demo/demo-data.js
+examples/bookmark-demo/player.html
+examples/bookmark-demo/replay.py
 install.ps1
 install.sh
 references/agent-support.md
@@ -20,8 +28,10 @@ scripts/codegraph_setup.py
 scripts/discovery.py
 scripts/install.py
 scripts/newbie_dev_buddy.py
+scripts/record_demo.py
 scripts/verification.py
 tests/test_codegraph_setup.py
+tests/test_demo.py
 tests/test_discovery.py
 tests/test_install.py
 tests/test_map_adversarial.py

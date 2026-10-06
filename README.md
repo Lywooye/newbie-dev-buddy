@@ -2,11 +2,54 @@
 
 [简体中文](README.zh-CN.md)
 
-A local Skill for beginners building software with AI. Describe what you want to build; your coding agent proposes a module plan and development approach for review before implementation. New projects start with module design; existing projects start with code inspection. Reviewed maps, accepted plans, implementation events, and optional acceptance evidence stay in Markdown for later sessions.
+**Every change, clearly recorded.**
 
-The Chinese product name is **小白开发搭子**. Install and invoke the Skill as `newbie-dev-buddy`; the companion Python CLI maintains the records.
+Bring your idea; your coding agent helps you take it one step at a time. **Newbie Dev Buddy** asks the agent to explain the technical approach while you choose what to build. Changes made through Buddy's workflow leave plans, decisions, and implementation records in your project for the next session.
 
-**Version 0.4.0 is experimental.** The workflow has synthetic validation and small external-Kit integration examples; it has not been evaluated on a user's production project or shown to outperform other tools. Generated workflow prose is currently Chinese; supplied names, contracts, plans, and notes retain their language.
+![Newbie Dev Buddy: bring your idea, agree on a plan, and keep a record of changes. Chinese promotional illustration.](assets/promo.png)
+
+- **Get help shaping the idea:** your coding agent explains the parts and how they fit together in everyday language.
+- **Have a say:** ask for a revised plan; accept the version you actually want.
+- **Revisit the changes:** module maps, plan revisions, decisions, and implementation events stay in local Markdown; new plans retain the earlier records.
+
+This is a local Skill for your existing coding agent, with a Python CLI that maintains the records. The Chinese name is **小白开发搭子**; install and invoke it as `newbie-dev-buddy`.
+
+[Watch / download the short demo](assets/demo.mp4) · [Reproduce the example](examples/bookmark-demo/README.md) · [Beginner guide (Chinese)](references/beginner-guide.md)
+
+<details>
+<summary>Preview the demo</summary>
+
+[![A bookmark project: inspect the three modules, revise an export plan, and keep the history.](assets/demo-poster.png)](assets/demo.mp4)
+
+</details>
+
+The captioned video is in Chinese. It replays **scripted dialogue with real CLI records and program output**; the player is a presentation, not a built-in product UI or a live model-session recording.
+
+## Try your first module map
+
+Start with **basic installation**. CodeGraph and Acceptance Kit are optional; you can choose them later. You need an agent that can discover local Skills and work with project files, plus Python 3.9+ on macOS/Linux. For the complete workflow on Windows, use WSL with the agent and tools in the same Linux environment.
+
+If you already have a manager-owned Buddy installation, update through that manager. For a new installation in Codex, open the source directory and run:
+
+```sh
+git clone https://github.com/Lywooye/newbie-dev-buddy.git
+cd newbie-dev-buddy
+python3 scripts/install.py --agent codex --dry-run
+python3 scripts/install.py --agent codex
+```
+
+Then open your intended project in Codex and say:
+
+```text
+$newbie-dev-buddy
+Explain this project's modules and relationships in plain language.
+Show me a proposed map and what remains uncertain. Wait for my review
+before saving it. If this is a new project, clarify the first version first.
+```
+
+After installation, follow the reported host steps and verify that the agent actually discovers the Skill. [Other agents and invocation forms](references/agent-support.md) · [Installation details](#requirements-and-installation)
+
+**v0.4.0 is experimental.** Evidence comes from synthetic workflows and small external-Kit examples, not production-project evaluation or comparative performance studies. Generated workflow prose is currently Chinese; supplied names, contracts, plans, and notes retain their language.
 
 ## What it helps with
 
