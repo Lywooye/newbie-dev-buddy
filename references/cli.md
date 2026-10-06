@@ -2,7 +2,7 @@
 
 工具为 `scripts/newbie_dev_buddy.py`，核心仅依赖 Python 3.9 及以上标准库。`run-checks` 和 `verify` 另需 Node.js 22+，默认使用随搭子安装的内置 Acceptance Kit；基础规划和记录不需要 Node、npm 或联网。命令从 Skill 源目录调用；示例项目和内容均为合成材料。SHA、扫描文件名和版本号是参数角色示例，实际值从命令返回取得。
 
-`map-json`、`spec-json` 是传输材料，建议放在项目 `.handoff/newbie-dev-buddy/inputs/` 或项目外临时目录，再用正确的调用路径读取。不要把这些生成文件写进正在扫描或验收的源码目录，以免使扫描自己过期。权威内容仍为 `MODULES.md` 和已保存的版本 Markdown。
+`map-json`、`spec-json` 是传输材料，建议放在项目 `.handoff/newbie-dev-buddy/inputs/` 或项目外临时目录，再用正确的调用路径读取。不要把这些生成文件写进正在扫描或验收的源码目录，以免使扫描自己过期。当前地图的数据来源为 `MODULES.json`，`MODULES.md` 是自动生成的阅读版本；已保存的方案和事件仍为版本 Markdown。
 
 成功命令在 stdout 返回 JSON；参数或前置条件错误在 stderr 返回 JSON，退出码为 1。已完成但失败或过期的验收记录返回 `ok: false`，退出码为 2。按 JSON 和退出码判断，不只看关键词，不假定所有命令返回相同字段。
 
@@ -14,6 +14,8 @@
 | `map-propose` | `--project P --scan SCAN_REL_PATH --map-json FILE` | 保存绑定扫描与旧图的地图候选；可附 `--lineage-json FILE` |
 | `map-decide` | `--project P --revision N --expect-digest SHA --decision accept\|reject --note-file FILE` | 接受或拒绝地图候选，保留结构历史 |
 | `init` | `--project P --map-json FILE --decision-note-file FILE` | 保存已接受的初始模块结构 |
+| `map-migrate` | `--project P --expect-digest LEGACY_MD_SHA` | 显式转换旧地图格式，保留原文；不改业务数据 |
+| `map-render` | `--project P --expect-digest MODULES_JSON_SHA` | 保留不一致文件后，从选定 JSON 重建 MD；不接受手写意见 |
 | `propose` | `--project P --spec-json FILE` | 保存修改候选及冻结验证计划，分配新修订号 |
 | `decide` | `--project P --change C --revision N --decision accept\|reject --expect-digest SHA --note-file FILE` | 校验修改候选并保存决定 |
 | `record` | `--project P --change C --revision N --expect-digest SHA --event started\|implemented\|interrupted --note-file FILE` | 对已接受版本记录实施事件 |
@@ -25,6 +27,8 @@
 `scan` 默认单文件上限为 262144 字节（256 KiB），当前需要 macOS/Linux 安全目录相对读取。Python 可提取 AST 符号与导入，其他语言只有清单；动态导入、运行时调用和排除项内容不在覆盖内。它不运行代码，不自动生成业务模块。`map-propose` 使用该清单和经源码核对的人工或 AI 分组结果；详细方法见 [discovery.md](discovery.md)。扫描文件及报告路径相对项目根解析。`--kit` 是可选的可信兼容外部 Kit 目录；未指定时使用内置版本，显式目录错误时失败，不回退。
 
 `map-decide` 与 `decide` 的 SHA 对应待决策候选的完整 Markdown。接受修改后返回 `accepted_digest`，`record`、`run-checks` 和 `verify` 使用已接受版本的 digest，不能假定接受前后相同。手工改写后不能只换 digest 当作原来已接受。
+
+`status.module_format` 为 `json-and-markdown` 或 `legacy-markdown`。`map_digest` 继续表示当前 MD 的完整 SHA；地图候选还绑定当前 JSON SHA。正常读取会校验 JSON 与 MD 内容一致，旧格式不会因读取而转换。恢复及转换见 [同步与恢复](workflow.md#模块文档同步与恢复)。
 
 地图接受会校验扫描来源、旧图和最新候选；修改接受会校验方案 digest、最新修订和项目基线。遇到漂移先核对变化，必要时重新扫描、提出候选并确认。
 

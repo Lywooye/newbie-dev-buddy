@@ -27,11 +27,13 @@ references/beginner-guide.md
 references/cli.md
 references/codegraph.md
 references/discovery.md
+references/plain-language.md
 references/verification.md
 references/workflow.md
 scripts/codegraph_setup.py
 scripts/discovery.py
 scripts/install.py
+scripts/module_documents.py
 scripts/newbie_dev_buddy.py
 scripts/record_demo.py
 scripts/verification.py
@@ -42,6 +44,7 @@ tests/test_discovery.py
 tests/test_install.py
 tests/test_map_adversarial.py
 tests/test_module_adversarial.py
+tests/test_module_documents.py
 tests/test_security.py
 tests/test_v02_workflow.py
 tests/test_verification.py

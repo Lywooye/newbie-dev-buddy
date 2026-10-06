@@ -1,4 +1,5 @@
 """Discovery adoption and module evidence through the public CLI; synthetic only."""
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -155,14 +156,13 @@ class ModuleEvidenceTests(unittest.TestCase):
         config = {"schema": 1, "name": "Synthetic value checks", "exclude": [".handoff/newbie-dev-buddy"],
                   "steps": [{"id": "value", "command": ["node", "tests/value.mjs"], "format": "checks"}]}
         (self.project / "acceptance.value.json").write_text(json.dumps(config))
-        path = self.project / "docs/newbie-dev-buddy/MODULES.md"
+        path = self.project / "docs/newbie-dev-buddy/MODULES.json"
         # Synthetic fixture configuration before proposing; no simulated user record is modified.
-        text = path.read_text()
-        header, body = text[4:].split("\n---\n", 1)
-        mapping = json.loads(header)
+        mapping = json.loads(path.read_text())
         mapping["modules"][0]["verification"] = {"policy": "required", "config": "acceptance.value.json",
                                                  "steps": ["value"], "inputs": ["tests/value.py"]}
-        path.write_text("---\n" + json.dumps(mapping, sort_keys=True, indent=2) + "\n---\n" + body)
+        path.write_text(json.dumps(mapping))
+        self.call("map-render", "--expect-digest", hashlib.sha256(path.read_bytes()).hexdigest())
         return config
 
     def test_required_module_stays_unchecked_until_covered(self):

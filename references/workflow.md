@@ -12,11 +12,13 @@
 
 | 位置 | 角色 |
 |---|---|
-| `docs/newbie-dev-buddy/MODULES.md` | 当前确认的模块、关系、契约及可选验收配置 |
+| `docs/newbie-dev-buddy/MODULES.json` | 当前确认的完整模块数据：职责、关系、约定及可选验收配置 |
+| `docs/newbie-dev-buddy/MODULES.md` | 从 JSON 生成的可读模块说明，用于用户核对 |
 | `docs/newbie-dev-buddy/changes/` | 已接受的具体修改版本 |
 | `.handoff/newbie-dev-buddy/discovery/` | 扫描清单、来源指纹及覆盖记录 |
 | `.handoff/newbie-dev-buddy/maps/drafts/`、`maps/accepted/` | 地图候选及接受版本 |
-| `.handoff/newbie-dev-buddy/maps/rejected/`、`maps/history/` | 地图拒绝决定及旧总览完整内容 |
+| `.handoff/newbie-dev-buddy/maps/rejected/`、`maps/history/` | 地图拒绝决定及旧总览 MD/JSON 原文 |
+| `.handoff/newbie-dev-buddy/maps/repairs/` | 重建视图前保留的 MD/JSON，包括用户手写意见 |
 | `.handoff/newbie-dev-buddy/drafts/` | 修改候选与修订 |
 | `.handoff/newbie-dev-buddy/decisions/` | 拒绝决定 |
 | `.handoff/newbie-dev-buddy/records/` | 实施、中断与验收事件 |
@@ -24,9 +26,20 @@
 
 具体路径以命令返回为准，不能删除记录后靠索引恢复。
 
-模块总览和方案 Markdown 用 JSON 对象作为合法 YAML frontmatter；结构字段与正文共同构成文档。输入 JSON 是 CLI 传输材料，不再维护第二份相互竞争的权威 JSON。需要更新已接受地图时使用地图修订；需要更新已接受方案时新建方案修订。
+当前模块数据只以 `MODULES.json` 为准，`MODULES.md` 是生成的阅读版本。两者来自同一次保存，MD 含 JSON 原文指纹；正常读取时核对完整生成内容。地图接受同时更新两份文件、保留旧版，不靠 AI 分别改写。输入 `map-json` 是候选传输材料，不能当成另一份当前地图。方案、决定和事件 Markdown 继续使用原有 JSON frontmatter，历史原文不转换。需要更新地图或方案，分别走对应修订流程。
 
 备份同时保留 `docs/newbie-dev-buddy/` 和 `.handoff/newbie-dev-buddy/`。只有导航索引可重建；从 Kit 输入排除记录目录不等于从备份排除。
+
+## 模块文档同步与恢复
+
+给用户看 `MODULES.md`，助手读取完整 `MODULES.json` 并先运行 `status`。职责或约定需要改变时，整理候选、确认版本，再用 `map-propose` / `map-decide` 保存；不要直接编辑当前 JSON，也不要只更新阅读版本。
+
+- **两份文件不一致：** 暂停以它们为依据的后续操作，核对修改来源。用户在 MD 中的意见先保留为候选，不能被重建命令自动接受。
+- **重建阅读版本：** `map-render --expect-digest JSON_SHA` 从选定 JSON 重建 MD。现有不一致 MD 和 JSON 先保存在 `maps/repairs/`；缺少 MD 也可重建。它不改变 JSON、不接受业务修改、不运行测试。指纹不匹配则拒绝操作。
+- **旧项目转换：** 仅有原格式 `MODULES.md` 的项目仍可使用。确认转换时，以旧 MD 的完整 SHA 调用 `map-migrate`，保留原 MD 原文，生成完整 JSON 和可读 MD。仅转换格式，不改职责和约定。转换后原方案或报告跟踪的文档可能变化，需要重新评估或重验，不能换指纹冒充原证据仍有效。首次接受新地图也会采用新格式并保留旧图。
+- **写入中断：** 每个文件用临时文件替换，普通写入失败尝试恢复原文件；跨文件保存不保证断电时同时完成。若进程中断，先核对当前文件、历史、决定和锁。同步检查可以发现不一致，不会擅自选择哪个版本正确。
+
+旧修改方案和历史报告保留原文；新地图不扩大旧方案范围。旧版尚未接受的地图候选如不符合当前生成模板，应重新提出并展示，不能直接换 digest。
 
 ## 提出修改
 

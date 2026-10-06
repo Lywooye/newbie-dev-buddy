@@ -1,6 +1,6 @@
 # Security
 
-Version 0.5.0 is experimental. Synthetic behavior tests and small integration examples are not a security certification or proof of production readiness.
+Version 0.6.0 is experimental. Synthetic behavior tests and small integration examples are not a security certification or proof of production readiness.
 
 ## Trust boundaries
 
@@ -21,7 +21,9 @@ The core records remain local and are not uploaded automatically. Review both `d
 
 Back up current documents and persistent records together. Exclude generated `.handoff/newbie-dev-buddy/` records or `.handoff` from Kit inputs while retaining related source, configurations, tests, and documentation. Complete those changes before acceptance; recording an event must not immediately invalidate the report. The CLI does not silently rewrite Kit configuration to achieve a pass.
 
-Map acceptance writes several files. Per-file replacement is not a cross-file transaction or a power-loss recovery mechanism. After an exception or interruption, inspect the current map, accepted candidate, archive, and lock before retrying; do not assume that all writes completed or were rolled back.
+Current module JSON and its generated Markdown view are checked for consistency before normal use. Ordinary pair-write failures attempt to restore previous contents; interrupted processes or power loss can leave a mismatch. Map acceptance writes several files. Per-file replacement is not a cross-file transaction or a power-loss recovery mechanism. After an exception or interruption, inspect the current map, accepted candidate, archive, and lock before retrying; do not assume that all writes completed or were rolled back.
+
+`map-render` rebuilds only the view from a selected JSON digest and archives an existing mismatched view and JSON first. It does not authenticate approval, adopt handwritten edits, or run checks. `map-migrate` preserves legacy map bytes and data, but document input fingerprints can become stale. Neither command makes old test evidence current.
 
 An interrupted writer may leave a lock. Inspect its process and actual project state before removing it; deleting a lock while another writer is active can invalidate coordination.
 

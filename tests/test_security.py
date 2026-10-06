@@ -174,7 +174,7 @@ class SecurityRegressions(unittest.TestCase):
         os.mkfifo(drafts / "C-PIPE-r1.md")
         self.call("status", ok=False)
 
-    def test_missing_frontmatter_error_does_not_disclose_project_root(self):
+    def test_mismatched_module_view_error_does_not_disclose_project_root(self):
         document = self.project / "docs/newbie-dev-buddy/MODULES.md"
         document.write_text("# Synthetic malformed document\n", encoding="utf-8")
         result = self.raw("status")

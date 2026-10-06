@@ -91,7 +91,7 @@ The core project workflow needs Python 3.9+ on macOS/Linux; `run-checks` and `ve
 
 ## Is it free? What does the demonstration prove?
 
-Buddy is open source under the MIT license and retains the bundled Kit's [MIT copyright and license notice](../vendor/acceptance-kit/LICENSE). There is no built-in paid account or service. Your coding agent, model, and external tools may have their own costs. Version 0.5.0 is experimental, and generated workflow prose is primarily Chinese.
+Buddy is open source under the MIT license and retains the bundled Kit's [MIT copyright and license notice](../vendor/acceptance-kit/LICENSE). There is no built-in paid account or service. Your coding agent, model, and external tools may have their own costs. Version 0.6.0 is experimental, and generated workflow prose is primarily Chinese.
 
 The bookmark demonstration uses scripted decisions, real CLI calls, a synthetic program modification, and actual export checks. It demonstrates reproducible revision and record handling for that sample, not production-project coverage, successful sessions in every agent, or superiority to other tools. It does not run a Kit or validate real model continuation across conversations.
 

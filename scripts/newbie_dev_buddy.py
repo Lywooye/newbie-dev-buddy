@@ -16,6 +16,7 @@ import uuid
 from urllib.parse import quote
 
 from discovery import collect
+from module_documents import map_body, readable_document, serialized
 from verification import build_plan, check_coverage, config_for_check, profile_files, validate_settings
 
 
@@ -86,7 +87,7 @@ def write(root, relative, content, *, new=False):
     require(not new or not target.exists(), f"record already exists: {relative}")
     fd, temporary = tempfile.mkstemp(prefix=".newbie-dev-buddy-", dir=target.parent)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as stream:
             stream.write(content)
             stream.flush()
             os.fsync(stream.fileno())
@@ -130,15 +131,93 @@ def validate_map(data):
     validate_settings(data)
 
 
-def module_map(root):
-    data, _ = read_md(safe(root, DOCS + "/MODULES.md"))
+def module_map(root, *, check_view=True):
+    source = safe(root, DOCS + "/MODULES.json")
+    document = safe(root, DOCS + "/MODULES.md")
+    if source.exists():
+        data = json_input(source)
+    else:
+        data, _ = read_md(document)
     validate_map(data)
     for item in data["modules"]:
         for path in item["paths"]:
             safe(root, path)
     for path in data.get("context", []):
         safe(root, path)
+    if source.exists() and check_view:
+        require(document.is_file() and document.read_bytes().decode("utf-8") ==
+                readable_document(data, source.read_bytes().decode("utf-8")),
+                "module documents are out of sync; preserve any edits as suggestions, then use map-render to rebuild the view")
     return data
+
+
+def write_module_map(root, mapping, *, new=False):
+    source = serialized(mapping)
+    contents = {DOCS + "/MODULES.json": source,
+                DOCS + "/MODULES.md": readable_document(mapping, source)}
+    previous = {}
+    for name in contents:
+        path = safe(root, name)
+        require(not path.exists() or path.is_file(), "module document must be a regular file")
+        require(not new or not path.exists(), "module documents already exist")
+        previous[name] = path.read_bytes().decode("utf-8") if path.exists() else None
+    try:
+        for name, content in contents.items():
+            write(root, name, content, new=new)
+    except (OSError, ValueError):
+        # Roll back ordinary write failures; readers detect mismatches after a crash.
+        for name, original in previous.items():
+            path = safe(root, name)
+            if original is None:
+                if path.exists():
+                    path.unlink()
+            elif not path.exists() or path.read_bytes().decode("utf-8") != original:
+                write(root, name, original)
+        raise
+
+
+def archive_module_map(root, *, repair=False):
+    current = safe(root, DOCS + "/MODULES.md")
+    previous_digest = digest(current)
+    folder = STATE + "/maps/history/"
+    stem = previous_digest
+    if repair:
+        # A changed JSON can accompany the same old view. Preserve both variants.
+        folder = STATE + "/maps/repairs/"
+        stem += "-" + digest(safe(root, DOCS + "/MODULES.json"))
+    for suffix in ("md", "json"):
+        source = safe(root, DOCS + "/MODULES." + suffix)
+        if source.exists():
+            name = folder + stem + "." + suffix
+            if not safe(root, name).exists():
+                write(root, name, source.read_bytes().decode("utf-8"), new=True)
+            require(digest(safe(root, name)) == digest(source), "previous map archive changed")
+    return previous_digest
+
+
+def migrate_map(root, args):
+    require(not safe(root, DOCS + "/MODULES.json").exists(), "module map already uses JSON; use map-render only to rebuild its view")
+    mapping = module_map(root)
+    require(digest(safe(root, DOCS + "/MODULES.md")) == args.expect_digest, "selected legacy map changed")
+    status(root)  # Validate existing records before changing their tracked documents.
+    previous_digest = archive_module_map(root)
+    write_module_map(root, mapping)
+    return {"module_document": DOCS + "/MODULES.md", "module_data": DOCS + "/MODULES.json",
+            "previous_digest": previous_digest,
+            "note": "Format migrated without changing module data; earlier input fingerprints may now be stale."}
+
+
+def render_map(root, args):
+    source = safe(root, DOCS + "/MODULES.json")
+    require(source.is_file() and digest(source) == args.expect_digest, "selected module JSON changed or is missing")
+    mapping = module_map(root, check_view=False)
+    document = safe(root, DOCS + "/MODULES.md")
+    content = readable_document(mapping, source.read_bytes().decode("utf-8"))
+    if document.exists() and document.read_bytes().decode("utf-8") != content:
+        archive_module_map(root, repair=True)
+    write(root, DOCS + "/MODULES.md", content)
+    return {"module_document": DOCS + "/MODULES.md", "module_data": DOCS + "/MODULES.json",
+            "note": "Readable view rebuilt from the selected JSON; handwritten edits were not accepted as module changes."}
 
 
 def snapshot(root, paths):
@@ -326,6 +405,7 @@ def status(root):
             item["drift"] = changed(data["baseline"], current_inputs(root, data))
         decisions.append(item)
     return {"modules": mapping["modules"], "map_revision": mapping.get("map_revision"),
+            "module_format": "json-and-markdown" if safe(root, DOCS + "/MODULES.json").exists() else "legacy-markdown",
             "map_digest": digest(safe(root, DOCS + "/MODULES.md")), "decisions": decisions,
             "accepted": accepted_items, "current": [i for i in accepted_items if not i["replaced_by"]],
             "trust_boundary": "Recorded acceptance is not authenticated; status does not re-run receipt validation."}
@@ -364,16 +444,6 @@ def refresh(root):
     write(root, STATE + "/HISTORY.md", "\n".join(history) + "\n")
     write(root, STATE + "/CURRENT.md", "\n".join(body) + "\n")
     return data
-
-
-def map_body(mapping):
-    body = ["# " + mapping.get("title", "模块总览"), "", "此表记录已确定的职责和关系；尚未存在的路径代表计划。", ""]
-    for module in mapping["modules"]:
-        body += [f"## {module['id']} · {module['name']}", "", module["purpose"], "",
-                 "路径：" + ", ".join(module["paths"]), "依赖：" + ", ".join(module.get("depends_on", [])), "", module["contract"], ""]
-        if module.get("verification"):
-            body += ["验收配置：" + json.dumps(module["verification"], ensure_ascii=False, sort_keys=True), ""]
-    return "\n".join(body)
 
 
 def json_input(value):
@@ -450,7 +520,7 @@ def validate_transition(root, previous, mapping, lineage):
 
 
 def candidate_map_body(data):
-    body = map_body(data["mapping"]) + "\n\n## 与原图的差异\n\n" + json.dumps(data["difference"], ensure_ascii=False, indent=2, sort_keys=True)
+    body = map_body(dict(data["mapping"], map_revision=data["revision"]), candidate=True) + "\n\n## 与原图的差异\n\n" + json.dumps(data["difference"], ensure_ascii=False, indent=2, sort_keys=True)
     body += "\n\n## 模块对应关系\n\n" + json.dumps(data["lineage"], ensure_ascii=False, indent=2, sort_keys=True)
     return body + "\n\n## 覆盖与待确认\n\n" + json.dumps(data["coverage"], ensure_ascii=False, indent=2, sort_keys=True)
 
@@ -479,6 +549,8 @@ def propose_map(root, args):
                 "scan": args.scan, "scan_digest": digest(safe(root, args.scan)),
                 "previous_digest": digest(current_path) if current_path.exists() else None,
                 "lineage": lineage, "difference": difference, "coverage": coverage}
+    data_path = safe(root, DOCS + "/MODULES.json")
+    metadata["previous_data_digest"] = digest(data_path) if data_path.exists() else None
     write(root, relative, md(metadata, candidate_map_body(metadata)), new=True)
     return {"path": relative, "revision": revision, "digest": digest(safe(root, relative)), "difference": difference, "coverage": coverage}
 
@@ -498,6 +570,9 @@ def decide_map(root, args):
     checked_inventory(root, data["scan"], data["scan_digest"])
     current = safe(root, DOCS + "/MODULES.md")
     require((digest(current) if current.exists() else None) == data["previous_digest"], "current module map changed; revise the candidate")
+    data_path = safe(root, DOCS + "/MODULES.json")
+    require((digest(data_path) if data_path.exists() else None) == data.get("previous_data_digest"),
+            "current module JSON changed; revise the candidate")
     mapping = data["mapping"]
     validate_map(mapping)
     previous = module_map(root) if current.exists() else {"modules": []}
@@ -514,10 +589,7 @@ def decide_map(root, args):
     if current.exists():
         status(root)  # Refuse malformed old records before applying the new map.
     if current.exists():
-        backup = f"{STATE}/maps/history/{data['previous_digest']}.md"
-        if not safe(root, backup).exists():
-            write(root, backup, current.read_text(encoding="utf-8"), new=True)
-        require(digest(safe(root, backup)) == data["previous_digest"], "previous map archive changed")
+        archive_module_map(root)
     else:
         require(not safe(root, DOCS).exists(), "module documentation already exists without MODULES.md; inspect before accepting")
     data.update(decision="accept", decision_note=note, proposal_digest=args.expect_digest)
@@ -527,7 +599,7 @@ def decide_map(root, args):
     try:
         changes_folder.mkdir(parents=True, exist_ok=True)
         write(root, destination, md(data, body), new=True)
-        write(root, DOCS + "/MODULES.md", md(mapping, map_body(mapping)))
+        write_module_map(root, mapping)
     except (OSError, ValueError):
         decision_path = safe(root, destination)
         if decision_path.exists():
@@ -540,6 +612,7 @@ def decide_map(root, args):
                 folder.rmdir()
         raise
     return {"decision": "accept", "path": destination, "module_document": DOCS + "/MODULES.md",
+            "module_data": DOCS + "/MODULES.json",
             "map_digest": digest(current), "note": "Existing proposal scopes stay frozen; map updates may require re-evaluation."}
 
 
@@ -553,10 +626,19 @@ def initialize(root, args):
     for path in mapping.get("context", []):
         safe(root, path)
     require(not safe(root, DOCS).exists(), "module documentation already exists; reuse it instead of overwriting")
-    mapping.update(schema=1, decision_note=text_file(args.decision_note_file))
+    mapping.update(schema=1, map_revision=0, decision_note=text_file(args.decision_note_file))
     safe(root, DOCS + "/changes").mkdir(parents=True)
-    write(root, DOCS + "/MODULES.md", md(mapping, map_body(mapping)), new=True)
-    return {"module_document": DOCS + "/MODULES.md"}
+    try:
+        write_module_map(root, mapping, new=True)
+    except (OSError, ValueError):
+        changes = safe(root, DOCS + "/changes")
+        if not any(changes.iterdir()):
+            changes.rmdir()
+        folder = safe(root, DOCS)
+        if not any(folder.iterdir()):
+            folder.rmdir()
+        raise
+    return {"module_document": DOCS + "/MODULES.md", "module_data": DOCS + "/MODULES.json"}
 
 
 def propose(root, args):
@@ -748,7 +830,7 @@ def run_checks(root, args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("init", "scan", "map-propose", "map-decide", "propose", "decide", "record", "verify", "run-checks", "status", "refresh"):
+    for name in ("init", "scan", "map-propose", "map-decide", "map-migrate", "map-render", "propose", "decide", "record", "verify", "run-checks", "status", "refresh"):
         command = commands.add_parser(name)
         command.add_argument("--project", required=True)
         if name == "init":
@@ -766,6 +848,8 @@ def main():
             command.add_argument("--expect-digest", required=True)
             command.add_argument("--decision", choices=("accept", "reject"), required=True)
             command.add_argument("--note-file", required=True)
+        if name in {"map-migrate", "map-render"}:
+            command.add_argument("--expect-digest", required=True)
         if name == "propose":
             command.add_argument("--spec-json", required=True)
         if name in {"decide", "record", "verify", "run-checks"}:
@@ -794,6 +878,7 @@ def main():
         else:
             with locked(root):
                 action = {"init": initialize, "scan": scan_project, "map-propose": propose_map, "map-decide": decide_map,
+                          "map-migrate": migrate_map, "map-render": render_map,
                           "propose": propose, "decide": decide, "record": record, "verify": verify, "run-checks": run_checks}
                 result = action[args.command](root, args) if args.command != "refresh" else {}
                 if safe(root, DOCS + "/MODULES.md").exists():

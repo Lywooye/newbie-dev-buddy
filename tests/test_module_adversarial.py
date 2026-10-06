@@ -27,9 +27,8 @@ class ModuleAdversarialTests(unittest.TestCase):
         (self.project / "src/ui.txt").write_text("Synthetic UI source.\n")
         (self.project / "tests").mkdir(exist_ok=True)
         (self.project / "tests/data.py").write_text("Synthetic behavioral test input.\n")
-        path = self.project / "docs/newbie-dev-buddy/MODULES.md"
-        header, body = path.read_text()[4:].split("\n---\n", 1)
-        mapping = json.loads(header)
+        path = self.project / "docs/newbie-dev-buddy/MODULES.json"
+        mapping = json.loads(path.read_text())
         value = {"policy": "required" if required else "on-change"}
         if not missing:
             value.update(self.profile("data"))
@@ -37,7 +36,8 @@ class ModuleAdversarialTests(unittest.TestCase):
         if integration:
             mapping["integration_checks"] = [{"id": "data-ui", "modules": ["M-DATA", "M-UI"],
                                                 "policy": integration, **self.profile("interface")}]
-        path.write_text("---\n" + json.dumps(mapping, sort_keys=True, indent=2) + "\n---\n" + body)
+        path.write_text(json.dumps(mapping))
+        self.call("map-render", "--expect-digest", hashlib.sha256(path.read_bytes()).hexdigest())
         kit = self.base / "synthetic-kit/bin"
         kit.mkdir(parents=True)
         (kit / "acceptance.mjs").write_text(
@@ -210,11 +210,11 @@ class ModuleAdversarialTests(unittest.TestCase):
 
     def test_failed_on_change_check_blocks_gate_after_all_required_checks_pass(self):
         self.configure(integration="required")
-        path = self.project / "docs/newbie-dev-buddy/MODULES.md"
-        header, body = path.read_text()[4:].split("\n---\n", 1)
-        mapping = json.loads(header)
+        path = self.project / "docs/newbie-dev-buddy/MODULES.json"
+        mapping = json.loads(path.read_text())
         mapping["modules"][1]["verification"] = {"policy": "on-change", **self.profile("ui")}
-        path.write_text("---\n" + json.dumps(mapping, sort_keys=True, indent=2) + "\n---\n" + body)
+        path.write_text(json.dumps(mapping))
+        self.call("map-render", "--expect-digest", hashlib.sha256(path.read_bytes()).hexdigest())
         self.implement(affected=["M-UI"])
         for check_id in ("module:M-DATA", "integration:data-ui"):
             self.assertEqual(self.verify(self.receipt(check_id), check_id)[0], 0)
