@@ -2,74 +2,67 @@
 
 [简体中文](README.zh-CN.md)
 
-**Every change, clearly recorded.**
+**Let’s build clear, maintainable projects.**
 
-Bring your idea; your coding agent helps you take it one step at a time. **Newbie Dev Buddy** asks the agent to explain the technical approach while you choose what to build. Changes made through Buddy's workflow leave plans, decisions, and implementation records in your project for the next session.
+**Newbie Dev Buddy (小白开发搭子)** is an open-source AI development Skill for people without a professional programming background. It helps you work with your coding agent to give each part of a project a clear responsibility, review changes before implementation, and retain the decisions you will need when the project grows.
 
-![Newbie Dev Buddy: bring your idea, agree on a plan, and keep a record of changes. Chinese promotional illustration.](assets/promo.png)
+You describe what you want to build. Your agent explains the structure and prepares the technical details; you discuss the choices and decide which plan to accept. Buddy keeps module maps, plan revisions, decisions, and implementation records in local Markdown. Optional module and integration checks connect those plans to actual verification evidence.
 
-- **Get help shaping the idea:** your coding agent explains the parts and how they fit together in everyday language.
-- **Have a say:** ask for a revised plan; accept the version you actually want.
-- **Revisit the changes:** module maps, plan revisions, decisions, and implementation events stay in local Markdown; new plans retain the earlier records.
+![Newbie Dev Buddy: let’s build clear, maintainable projects. Review plans together, keep a change history, and check each module. Build in modules; works with multiple coding agents.](assets/promo.en.png)
 
-This is a local Skill for your existing coding agent, with a Python CLI that maintains the records. The Chinese name is **小白开发搭子**; install and invoke it as `newbie-dev-buddy`.
+Buddy works inside your existing coding agent. It is a local Skill with a Python CLI, installed and invoked as `newbie-dev-buddy`.
 
-[Watch / download the short demo](assets/demo.mp4) · [Reproduce the example](examples/bookmark-demo/README.md) · [Beginner guide (Chinese)](references/beginner-guide.md)
+[FAQ](docs/faq.md) · [Three use cases](docs/use-cases.md) · [Beginner guide (Chinese)](references/beginner-guide.md)
+
+## Build a project you can keep working on
+
+A clear structure means knowing what each module does, what it leaves to other modules, and how they communicate. Continued maintenance means understanding the impact of a change and why earlier decisions were made. Buddy gives you and your agent a process for working through both.
+
+| Stage | What you and the agent work through | What remains in the project |
+|---|---|---|
+| Map the modules | Responsibilities, boundaries, inputs, outputs, and dependencies | A reviewed module map, uncertainties, and earlier map revisions |
+| Review a change | Affected modules, behavior to preserve, alternatives, and observable completion criteria | The exact plan revision and your decision to accept, reject, or revise it |
+| Implement and retain the history | Start the accepted change, implement it, and record the outcome | Implementation events, previous plans, and the reasons for changing direction |
+| Check the result, when configured | Run selected module checks and checks across module interfaces | Actual reports, coverage, failures, and evidence that needs rechecking |
+
+You can ask: “What will this change affect? What should still work afterward? How will we check it?” The agent prepares commands and technical fields; you do not need to write JSON or know architecture terminology to discuss the plan. These questions keep each review focused on behavior you can observe.
+
+An accepted plan, an implemented change, and a verified result are separate states. Change records cover work done through Buddy's workflow; they do not automatically track every manual edit. The module map guides development, but does not enforce boundaries in the code.
+
+## Start where your project is
+
+**Starting from an idea:** describe the problem and the smallest useful first version. The agent proposes modules and explains their relationships before saving the initial map with `init`. Planned code paths may not exist yet; a plan is kept separate from the implemented state.
+
+> I want to build a tool that does…. Help me define the first version and explain its modules in plain language. Show me the proposed structure and uncertainties, and wait for my review before saving it or developing it.
+
+**Working with existing code:** the agent inspects the current implementation, checks structural evidence, and proposes a reviewable map. Built-in `scan` records file inventories, fingerprints, and Python syntax observations; other languages primarily receive inventories. Optional CodeGraph provides additional multi-language structure clues. Neither scanner automatically determines business modules or refactors the project. Describing existing structure and proposing a redesign are separate tasks.
+
+> Organize this project's modules and relationships. Separate source-confirmed findings from assumptions. Explain unassigned files and overlapping responsibilities, then show me a proposed map before saving it.
+
+**Making a change or continuing in another conversation:** read the current map and relevant accepted plans first, check the latest source, then discuss a specific change. Previous revisions remain available when a new plan replaces them. A new agent can use these records without relying entirely on the previous conversation's compressed context.
+
+> Read this project's status, module map, accepted plans, and implementation records. Check them against the current code. Tell me what is done, what remains unchecked, and which decision comes next before making changes.
+
+See the [use cases and reproducible records](docs/use-cases.md) for examples. Records provide reference material; missing requirements and stale evidence still need discussion.
+
+## See a complete example
+
+[Watch / download the short demo](assets/demo.mp4) · [Reproduce the bookmark example](examples/bookmark-demo/README.md) · [Read the text walkthrough](docs/use-cases.md)
 
 <details>
 <summary>Preview the demo</summary>
 
-[![A bookmark project: inspect the three modules, revise an export plan, and keep the history.](assets/demo-poster.png)](assets/demo.mp4)
+[![A bookmark project: inspect three modules, revise an export plan, and retain the history.](assets/demo-poster.png)](assets/demo.mp4)
 
 </details>
 
-The captioned video is in Chinese. It replays **scripted dialogue with real CLI records and program output**; the player is a presentation, not a built-in product UI or a live model-session recording.
-
-## Try your first module map
-
-Start with **basic installation**. CodeGraph and Acceptance Kit are optional; you can choose them later. You need an agent that can discover local Skills and work with project files, plus Python 3.9+ on macOS/Linux. For the complete workflow on Windows, use WSL with the agent and tools in the same Linux environment.
-
-If you already have a manager-owned Buddy installation, update through that manager. For a new installation in Codex, open the source directory and run:
-
-```sh
-git clone https://github.com/Lywooye/newbie-dev-buddy.git
-cd newbie-dev-buddy
-python3 scripts/install.py --agent codex --dry-run
-python3 scripts/install.py --agent codex
-```
-
-Then open your intended project in Codex and say:
-
-```text
-$newbie-dev-buddy
-Explain this project's modules and relationships in plain language.
-Show me a proposed map and what remains uncertain. Wait for my review
-before saving it. If this is a new project, clarify the first version first.
-```
-
-After installation, follow the reported host steps and verify that the agent actually discovers the Skill. [Other agents and invocation forms](references/agent-support.md) · [Installation details](#requirements-and-installation)
-
-**v0.4.0 is experimental.** Evidence comes from synthetic workflows and small external-Kit examples, not production-project evaluation or comparative performance studies. Generated workflow prose is currently Chinese; supplied names, contracts, plans, and notes retain their language.
-
-## What it helps with
-
-- **Design modules before starting a new project.** The agent proposes responsibilities, inputs, outputs, and relationships in plain language. After review, `init` saves the accepted initial map. Planned code paths may not exist yet; plans and implemented states remain separate. The CLI itself does not design architecture.
-- **Start with existing code.** `scan` records a structural inventory and fingerprints. An agent or contributor checks code and groups responsibilities; `map-propose` makes that map reviewable, including differences, unassigned files, and overlapping paths. The built-in scanner extracts Python syntax observations and inventories other languages. Optional CodeGraph adds multi-language structural evidence for the agent to review. Neither tool automatically establishes business modules or refactors code.
-- **Keep structure history.** Accept a specific map revision, retain earlier maps, and preserve module IDs through renames and moves. Splits, merges, and retirements require explicit lineage; retired IDs cannot be recycled.
-- **Approve an exact plan.** Change decisions check the complete candidate Markdown digest, latest revision, and tracked baseline. Accepted revisions remain available when a later plan replaces them.
-- **Choose module checks.** Set a project default, override a module, and add cross-module integration checks. Each change proposal freezes the configuration SHA and JSON content, required steps, and declared inputs. Configured source/test inputs must exist and remain covered before proposing; prepare new test files first. A passing project report does not automatically mark every module as checked.
-- **Keep claims separate.** Accepted, implemented, and verified are different states. Missing, partial, failed, historical, and stale evidence remains visible.
-- **Reuse a trusted Kit.** `run-checks` actually runs selected existing Acceptance Kit configurations; `verify` rechecks an existing report. No new test runner, server, account, or database is required.
-
-The records support review and handoff. They do not authenticate consent, prevent direct file edits, prove correct architecture, or establish exhaustive impact and test coverage. `delivery_ready` requires required checks and relevant configured interface checks for required modules to pass; any executed failed or stale check blocks that gate. With no required rules it is `null`, not a claim that the whole project is correct.
+The Chinese-captioned video follows a fictional bookmark tool: save a three-module map, reject the first export plan, accept a revised plan, implement it, and read the records from a new process. CLI records and sample export checks are real; dialogue and decisions are scripted. No Kit runs in this example, so Kit verification remains `not_run`. The player is a presentation, not a built-in product UI or a live model-session recording.
 
 ## Requirements and installation
 
-- Python 3.9 or later. The installer uses the standard library; the core project workflow currently requires safe Unix directory-relative I/O on macOS or Linux.
-- A local coding agent with Skill discovery and project-file tools. The installer has adapters for Codex, Claude Code, Cursor, Windsurf/Cascade, Copilot CLI, WorkBuddy, CodeBuddy, OpenCode, pi, ZCode, DeepSeek Harness, and Trae. See [host paths, invocation, and limits](references/agent-support.md).
-- Node.js and a trusted compatible Acceptance Kit are optional for `run-checks` and `verify`. The separate Kit 0.1.2 requires Node.js 22 or later and is not installed by this tool.
+You need **Python 3.9+ on macOS or Linux**, and a coding agent that can discover local Skills and work with project files. On Windows, put the complete workflow—agent, Python, Buddy, optional CodeGraph, and project—inside the same WSL Linux environment. The PowerShell installation wrapper does not make the core project workflow Windows-native.
 
-Download the source, open its directory, and preview installation for your chosen agent:
+For a new Codex installation, download the source, preview the changes, then install:
 
 ```sh
 git clone https://github.com/Lywooye/newbie-dev-buddy.git
@@ -78,105 +71,79 @@ python3 scripts/install.py --agent codex --dry-run
 python3 scripts/install.py --agent codex
 ```
 
-**Basic installation is the default:** install the Skill only. **Enhanced installation** also reuses a compatible CodeGraph or downloads the pinned official v1.6.2 release with SHA-256 verification, then prepares the selected host's MCP configuration. It does not upgrade an existing tool or index a project automatically.
+**Basic installation is the default:** it installs the Skill only. CodeGraph and Acceptance Kit are optional. If your existing installation belongs to a Skills manager, update it through that manager; the installer does not overwrite a different deployment.
 
-For enhanced installation into one project, replace the example path and preview first:
+Open the intended project in Codex, invoke `$newbie-dev-buddy`, and use one of the prompts above. Follow the installer's reported host steps and confirm the agent actually discovers the Skill before starting.
+
+The installer has adapters for **Codex, Claude Code, Cursor, Windsurf/Cascade, Copilot CLI, WorkBuddy, CodeBuddy, OpenCode, pi, ZCode, DeepSeek Harness, and Trae**. Paths and configuration fixtures do not establish successful live model sessions in all 12 hosts. Use the [host-specific paths, invocation forms, and limits](references/agent-support.md); do not assume every agent has the same slash command.
+
+Run the installer without arguments in an interactive terminal for its setup wizard, or use `--list-agents`. The `install.sh` and `install.ps1` wrappers forward the same Python options. See the advanced setup below for optional CodeGraph and project-only installation.
+
+## What this version can establish
+
+Buddy supports clearer structure and continued maintenance by making module boundaries, change impact, decisions, and verification scope explicit. The design and implementation still depend on your coding agent and your review. The CLI does not judge architecture quality, enforce code boundaries, authenticate human consent, or prevent direct edits outside the workflow.
+
+**v0.4.0 is experimental.** Evidence comes from synthetic workflows and small external-Kit examples. Real beginners' long-term architecture and maintenance outcomes, production-project effectiveness, and comparative performance have not yet been evaluated. A saved map or passing check is not a guarantee of good architecture, complete coverage, or overall project quality.
+
+Review here means reviewing plans and managing verification evidence. Buddy does not include a comprehensive code-review, vulnerability-scanning, or security-certification engine. Generated workflow prose is currently Chinese; supplied names, contracts, plans, and notes retain their language.
+
+## Advanced setup and records
+
+<details>
+<summary>Optional CodeGraph and host configuration</summary>
+
+CodeGraph is an external analyzer for symbols, calls, dependencies, and impact clues. The agent combines these with source and requirements; the accepted Markdown map remains the structure record. Buddy does not copy CodeGraph's engine or replace its graph.
+
+Enhanced installation reuses a trusted compatible CodeGraph or downloads the pinned official **v1.6.2** release with SHA-256 verification, then prepares the selected host's MCP configuration. It does not upgrade an existing tool, index a project, change the system PATH, or configure unselected hosts. For a project-only OpenCode setup, replace the path and preview:
 
 ```sh
 python3 scripts/install.py --agent opencode --mode enhanced \
   --scope project --project /path/to/project --dry-run
-python3 scripts/install.py --agent opencode --mode enhanced \
-  --scope project --project /path/to/project
 ```
 
-Run without arguments in an interactive terminal for the small setup wizard, or use `--list-agents` to see adapters. `install.sh` and `install.ps1` forward the same options to Python. Multiple `--agent` options select multiple hosts; no other host is changed. Existing different deployments are not overwritten. Update a Skills-manager-owned installation through its manager.
+Remove `--dry-run` to install. Multiple `--agent` options select multiple hosts. Strict JSON MCP files can be merged while retaining unrelated settings; TOML, JSONC, DeepSeek overlays, and unconfirmed global paths receive separate candidates for manual application. An exit code of `2` may mean configuration still needs manual completion. Installing files, applying configuration, connecting MCP, and invoking tools through a model are separate results.
 
-Strict JSON MCP files can be merged while retaining unrelated settings. TOML, JSONC, DeepSeek overlays, and unconfirmed global paths receive a separate candidate for manual application. Installing files, applying configuration, connecting MCP, and invoking tools through a model are different results; inspect the installer output and [host-specific next steps](references/agent-support.md).
+Before indexing, confirm the intended project, actual index root, and exclusions. Buddy's scan exclusions do not automatically configure CodeGraph. Recheck source when an index is stale. Discovery does not execute project scripts, install tools, redirect worktrees, or upload code. Cloud agents may send returned source snippets to their model service; local indexing is not network isolation or anonymization.
 
-**Windows:** the provided PowerShell wrapper and CodeGraph asset choices are not real Windows-host validation and do not make the core project workflow Windows-native. Use WSL for the whole workflow, installing the host, Python, Buddy, and CodeGraph in the same Linux environment; do not mix Windows and WSL executable or project paths. See [CodeGraph setup and boundaries](references/codegraph.md).
+See [CodeGraph setup and boundaries](references/codegraph.md) and [host-specific configuration](references/agent-support.md).
 
-## Use with an agent
+</details>
 
-Start with the [beginner guide in Chinese](references/beginner-guide.md), including setup, new projects, changes, and continuing in another conversation.
+<details>
+<summary>Optional module and integration verification</summary>
 
-In Codex, invoke `$newbie-dev-buddy` for the intended project. Other hosts have [their own invocation forms](references/agent-support.md#host-paths-and-invocation):
+Use a **trusted compatible external Acceptance Kit** with real configurations and tests. Buddy does not automatically install it. The separate Kit **0.1.2 requires Node.js 22+**; Node and the Kit are optional for the base workflow.
 
-For a new project:
+Set a project default policy and module overrides: `manual` means checks are chosen for each change, `on-change` adds checks for affected modules to the change's check plan under an accepted policy, and `required` makes them delivery-evidence gates. Integration checks cover interfaces or flows across at least two modules; independent module reports cannot replace this evidence.
 
-> I want to build a tool that does…. Help me define the first version, propose its modules, and explain how they work together in plain language. After I confirm the plan, save the structure and start development.
+`propose` freezes the policy and check plan, configuration SHA and full JSON snapshot, required steps, and declared inputs. Configurations and configured source/test inputs must already exist and remain covered by the Kit; prepare new test files before proposing. Changing commands or configuration afterward requires a revised, accepted proposal. Add `.handoff/newbie-dev-buddy` to the Kit's `exclude` list without a trailing slash, so new records do not invalidate reports; do not exclude all relevant documentation.
 
-For an existing project:
+`run-checks` validates the frozen configuration, executes every step in each selected configuration, rechecks the report, and records the result. It runs with the caller's permissions and **is not a sandbox**. The plan's `steps` specify required evidence, not which commands execute. Inspect trusted commands before running them.
 
-> Organize this project's existing modules and relationships. Separate code-confirmed findings from assumptions and gaps. Show me the proposed map and available module checks before saving the accepted structure.
+`verify` invokes the supplied Kit's checker on an existing real report; it does not run project tests. Without a check ID, a validated overall report is historical evidence and does not mark every module as checked. At least one nonempty `tap` or `checks` behavior step must provide evidence; an exit-code-only step is insufficient for module verification. Checks still cannot prove test sufficiency or all business requirements.
 
-The workflow is:
+Missing configuration, unrun, partial, passed, failed, and stale evidence remain distinct. `status` reads events and local fingerprints; it does not rerun checks. Recheck historical evidence with `verify` before relying on it. Map, input, or report changes can make earlier evidence stale.
 
-```text
-Clarify new-project requirements or inspect existing code → propose a module map → accept or revise
-→ propose a change and check plan → accept that revision
-→ implement → run selected checks → recheck and record evidence
-```
+`delivery_ready` requires every required check and relevant configured interface check for required modules to pass. Any executed failed or stale check blocks that gate. Without required rules it is `null`, not a whole-project quality claim. If checks cannot run, retain the reason and open verification items rather than inventing a passing report.
 
-Discovery documents the current implementation. A suggested redesign becomes a separate change proposal. Scanning does not install tools, execute project scripts, redirect to another worktree, or upload code. Enhanced installation is a separate explicit action; CodeGraph has its own indexing and network boundaries.
+See [verification policies, coverage, and state rules](references/verification.md) and [CLI commands and input schemas](references/cli.md).
 
-The coding agent prepares input files, commands, and technical fields. You review what will be built, what it affects, and how completion will be checked. The CLI reference below supports direct use and troubleshooting.
+</details>
 
-## Direct CLI
+<details>
+<summary>Direct CLI, records, and handoff</summary>
 
-The examples below use an existing project. For a new project, save the reviewed initial module map with [`init`](references/cli.md#扫描地图候选与接受).
+For new projects, `init` saves the reviewed initial map. For existing code, `scan` → `map-propose` → `map-decide` produces a reviewed map. Changes follow `propose` → `decide` → record `started` → implement → record `implemented`, followed by selected checks when configured. Decisions check the exact candidate Markdown digest, latest revision, and tracked baseline. A note records the decision; it does not itself create permission.
 
-Commands below run from this source directory. Paths, names, and SHA placeholders are synthetic; get actual scan paths, revisions, and digests from JSON command results.
+Keep transport JSON under the project's `.handoff/newbie-dev-buddy/inputs/` or in an external temporary directory so creating inputs does not invalidate scans. Earlier accepted maps and changes remain; renames and moves preserve module IDs, while splits, merges, and retirements require explicit lineage. Retired IDs cannot be recycled. Updating a map does not rewrite accepted changes or silently expand their tracked scope.
 
-```sh
-python3 scripts/newbie_dev_buddy.py scan --project ./sample-project --exclude private
-python3 scripts/newbie_dev_buddy.py map-propose --project ./sample-project \
-  --scan .handoff/newbie-dev-buddy/discovery/S-SCAN.md --map-json ./map.json
-```
+Current structure lives in `docs/newbie-dev-buddy/MODULES.md`; accepted changes live in `docs/newbie-dev-buddy/changes/`. Scans, map history, candidates, decisions, and events live under `.handoff/newbie-dev-buddy/`. **Back up both directories.** Only the `CURRENT.md` and `HISTORY.md` navigation indexes can be regenerated; `refresh` rebuilds those indexes, not the module scan or missing history.
 
-Keep generated map/spec JSON under the project's `.handoff/newbie-dev-buddy/inputs/` or outside the project in a temporary directory, so generating transport inputs does not invalidate the scan. The map and versioned Markdown remain authoritative.
+Records remain local by default. Relative links help portability, but paths, inputs, findings, and Kit output can contain private information. There is no automatic anonymization; inspect records before sharing them.
 
-Read the complete candidate. After the user accepts that exact version, save the actual decision in `map-note.md` and use its returned revision and digest:
+Parameter errors exit with code `1`; completed failed or stale verification exits with code `2`. Inspect JSON results and exit status. Full commands and schemas are in the [CLI reference](references/cli.md); see also [discovery](references/discovery.md), [workflow and recovery](references/workflow.md), and [security](SECURITY.md).
 
-```sh
-python3 scripts/newbie_dev_buddy.py map-decide --project ./sample-project \
-  --revision MAP_REVISION --expect-digest MAP_CANDIDATE_SHA \
-  --decision accept --note-file ./map-note.md
-```
-
-The first acceptance creates `docs/newbie-dev-buddy/MODULES.md`. Later acceptance retains the old map and updates the current one. A note file records a decision; it does not itself create permission.
-
-Prepare a complete `spec.json` with the change ID, primary and affected modules, location, plan, and observable acceptance conditions. Then use `propose`, review and `decide`, record `started`, implement, and record `implemented`. See [input schemas and examples](references/cli.md).
-
-After selected checks are authorized and a trusted Kit is available:
-
-```sh
-python3 scripts/newbie_dev_buddy.py run-checks --project ./sample-project \
-  --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA \
-  --kit ./acceptance-kit --check-id module:M-EXPORT
-```
-
-Or run the Kit through the project's existing process, then recheck its real report:
-
-```sh
-python3 scripts/newbie_dev_buddy.py verify --project ./sample-project \
-  --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA \
-  --kit ./acceptance-kit --receipt .acceptance/example-run/report.json \
-  --check-id module:M-EXPORT
-```
-
-`run-checks` rechecks the frozen configuration, then executes every step in each selected configuration with the invoking user's permissions; it is not a sandbox. Changing check commands after starting requires a revised, accepted proposal. `verify` invokes the supplied Kit's checker but does not run project tests. Use trusted configurations and exclude generated `.handoff/newbie-dev-buddy/` records from Kit inputs without excluding all relevant documentation. No Kit means open verification items, not an invented passing report.
-
-`status` is read-only and does not rerun the Kit. Recheck historical evidence before relying on it. `refresh` rebuilds indexes only; it does not rescan modules. Parameter errors exit with code 1; completed failed or stale verification exits with code 2. Inspect JSON and exit status.
-
-## Records and handoff
-
-Current structure lives in `docs/newbie-dev-buddy/MODULES.md`; accepted changes in `docs/newbie-dev-buddy/changes/`. Scans, map history, candidates, decisions, and events live under `.handoff/newbie-dev-buddy/`. Back up both directories; only `CURRENT.md` and `HISTORY.md` navigation indexes can be regenerated.
-
-Updating the map does not rewrite accepted changes or silently expand their tracked scope. An unscoped passing report is retained as overall historical evidence, not assigned to every module.
-
-Records are local by default. Relative links help portability, but inputs, paths, findings, and Kit output may contain private information. There is no automatic anonymization; inspect records before publishing.
-
-The advantage of this integration is the link from code evidence to a reviewed decision, retained Markdown history, and optional acceptance evidence. Buddy uses CodeGraph as an external analyzer; it does not copy its engine or replace its graph. See [CodeGraph](references/codegraph.md), [agent support](references/agent-support.md), [discovery](references/discovery.md), [workflow](references/workflow.md), [module verification](references/verification.md), [CLI](references/cli.md), and [security](SECURITY.md).
+</details>
 
 ## Development
 
@@ -184,6 +151,6 @@ The advantage of this integration is the link from code evidence to a reviewed d
 python3 -m unittest discover -s tests -v
 ```
 
-Tests use temporary synthetic projects and simulated decisions. CI runs the suite on Linux with Python 3.9 and 3.12. Repository fixtures check the Kit protocol; external-Kit examples are separate from CI and do not establish production readiness or comparative performance.
+Tests use temporary synthetic projects and simulated decisions. CI runs the suite on Linux with Python 3.9 and 3.12; macOS/Windows CI checks installer fixtures and platform wrappers. Repository fixtures check the Kit protocol; external-Kit examples are separate from CI and do not establish production readiness or comparative performance.
 
 Licensed under [MIT](LICENSE).

@@ -10,7 +10,12 @@ agents/openai.yaml
 assets/demo-poster.png
 assets/demo.mp4
 assets/promo-copy.md
+assets/promo.en.png
 assets/promo.png
+docs/faq.md
+docs/faq.zh-CN.md
+docs/use-cases.md
+docs/use-cases.zh-CN.md
 examples/bookmark-demo/README.md
 examples/bookmark-demo/demo-data.js
 examples/bookmark-demo/player.html

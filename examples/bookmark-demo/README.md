@@ -4,6 +4,8 @@
 
 [观看 / 下载视频](../../assets/demo.mp4) · [播放器源码](player.html) · [重录脚本](../../scripts/record_demo.py)
 
+[三个使用场景的文字说明](../../docs/use-cases.zh-CN.md) · [FAQ：方案审阅与模块验收](../../docs/faq.zh-CN.md) · [English walkthrough](../../docs/use-cases.md)
+
 ## 自己跑一遍
 
 需要 macOS/Linux 或 WSL、Python 3.9+。不需要模型账号、CodeGraph、Kit 或第三方 Python 包。以下命令从仓库根目录运行，输出目录必须尚不存在：
