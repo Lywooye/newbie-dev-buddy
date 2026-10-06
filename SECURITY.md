@@ -1,6 +1,6 @@
 # Security
 
-Version 0.2.0 is experimental. Synthetic behavior tests and small integration examples are not a security certification or proof of production readiness.
+Version 0.2.1 is experimental. Synthetic behavior tests and small integration examples are not a security certification or proof of production readiness.
 
 ## Trust boundaries
 

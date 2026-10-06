@@ -1,13 +1,16 @@
-# Module Change Workflow
+# Newbie Dev Buddy
 
 [简体中文](README.zh-CN.md)
 
-A local Skill and Python CLI that turns an existing project into a reviewed module map, then records accepted change revisions, implementation events, and optional per-module Acceptance Kit evidence in Markdown.
+A local Skill for beginners building software with AI. Describe what you want to build; your coding agent proposes a module plan and development approach for review before implementation. New projects start with module design; existing projects start with code inspection. Reviewed maps, accepted plans, implementation events, and optional acceptance evidence stay in Markdown for later sessions.
 
-**Version 0.2.0 is experimental.** The workflow has synthetic validation and small external-Kit integration examples; it has not been evaluated on a user's production project or shown to outperform other tools. Generated workflow prose is currently Chinese; supplied names, contracts, plans, and notes retain their language.
+The Chinese product name is **小白开发搭子**. The companion Python CLI maintains the records. The installation identifier and invocation name remain `module-change-workflow` for compatibility with existing installations and project records.
+
+**Version 0.2.1 is experimental.** The workflow has synthetic validation and small external-Kit integration examples; it has not been evaluated on a user's production project or shown to outperform other tools. Generated workflow prose is currently Chinese; supplied names, contracts, plans, and notes retain their language.
 
 ## What it helps with
 
+- **Design modules before starting a new project.** The agent proposes responsibilities, inputs, outputs, and relationships in plain language. After review, `init` saves the accepted initial map. Planned code paths may not exist yet; plans and implemented states remain separate. The CLI itself does not design architecture.
 - **Start with existing code.** `scan` records a structural inventory and fingerprints. An agent or contributor checks code and groups responsibilities; `map-propose` makes that map reviewable, including differences, unassigned files, and overlapping paths. Python symbols and imports are syntax observations; other languages currently receive file inventory only. The CLI does not automatically infer business modules or refactor code.
 - **Keep structure history.** Accept a specific map revision, retain earlier maps, and preserve module IDs through renames and moves. Splits, merges, and retirements require explicit lineage; retired IDs cannot be recycled.
 - **Approve an exact plan.** Change decisions check the complete candidate Markdown digest, latest revision, and tracked baseline. Accepted revisions remain available when a later plan replaces them.
@@ -46,21 +49,33 @@ Reload Skills according to your host's instructions. If a Skills manager owns th
 
 ## Use with an agent
 
+Start with the [beginner guide in Chinese](references/beginner-guide.md), including setup, new projects, changes, and continuing in another conversation.
+
 Invoke `$module-change-workflow` for the intended project:
+
+For a new project:
+
+> I want to build a tool that does…. Help me define the first version, propose its modules, and explain how they work together in plain language. After I confirm the plan, save the structure and start development.
+
+For an existing project:
 
 > Organize this project's existing modules and relationships. Separate code-confirmed findings from assumptions and gaps. Show me the proposed map and available module checks before saving the accepted structure.
 
 The workflow is:
 
 ```text
-Inspect existing code → propose a module map → accept or revise
+Clarify new-project requirements or inspect existing code → propose a module map → accept or revise
 → propose a change and check plan → accept that revision
 → implement → run selected checks → recheck and record evidence
 ```
 
 Discovery documents the current implementation. A suggested redesign becomes a separate change proposal. Scanning does not install tools, execute project scripts, redirect to another worktree, or upload code.
 
+The coding agent prepares input files, commands, and technical fields. You review what will be built, what it affects, and how completion will be checked. The CLI reference below supports direct use and troubleshooting.
+
 ## Direct CLI
+
+The examples below use an existing project. For a new project, save the reviewed initial module map with [`init`](references/cli.md#扫描地图候选与接受).
 
 Commands below run from this source directory. Paths, names, and SHA placeholders are synthetic; get actual scan paths, revisions, and digests from JSON command results.
 
