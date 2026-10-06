@@ -6,7 +6,7 @@
 
 **Newbie Dev Buddy (小白开发搭子)** is an open-source AI development Skill for people without a professional programming background. It helps you work with your coding agent to give each part of a project a clear responsibility, review changes before implementation, and retain the decisions you will need when the project grows.
 
-You describe what you want to build. Your agent explains the structure and prepares the technical details; you discuss the choices and decide which plan to accept. Buddy keeps module maps, plan revisions, decisions, and implementation records in local Markdown. Optional module and integration checks connect those plans to actual verification evidence.
+You describe what you want to build. Your agent explains the structure and prepares the technical details; you discuss the choices and decide which plan to accept. Buddy stores authoritative module data in JSON, generates a readable Markdown map, and keeps plan revisions, decisions, and implementation records in local Markdown. Optional module and integration checks connect those plans to actual verification evidence.
 
 ![Newbie Dev Buddy: let’s build clear, maintainable projects. Review plans together, keep a change history, and check each module. Build in modules; works with multiple coding agents.](assets/promo.en.png)
 
@@ -83,7 +83,7 @@ Run the installer without arguments in an interactive terminal for its setup wiz
 
 Buddy supports clearer structure and continued maintenance by making module boundaries, change impact, decisions, and verification scope explicit. The design and implementation still depend on your coding agent and your review. The CLI does not judge architecture quality, enforce code boundaries, authenticate human consent, or prevent direct edits outside the workflow.
 
-**v0.6.0 is experimental.** Evidence comes from synthetic workflows and small Kit examples. Real beginners' long-term architecture and maintenance outcomes, production-project effectiveness, and comparative performance have not yet been evaluated. A saved map or passing check is not a guarantee of good architecture, complete coverage, or overall project quality.
+**v0.7.0 is experimental.** Evidence comes from synthetic workflows and small Kit examples. Real beginners' long-term architecture and maintenance outcomes, production-project effectiveness, and comparative performance have not yet been evaluated. A saved map or passing check is not a guarantee of good architecture, complete coverage, or overall project quality.
 
 Review here means reviewing plans and managing verification evidence. Buddy does not include a comprehensive code-review, vulnerability-scanning, or security-certification engine. Generated workflow prose is currently Chinese; supplied names, contracts, plans, and notes retain their language.
 
@@ -137,7 +137,9 @@ See [verification policies, coverage, and state rules](references/verification.m
 <details>
 <summary>Direct CLI, records, and handoff</summary>
 
-For new projects, `init` saves the reviewed initial map. For existing code, `scan` → `map-propose` → `map-decide` produces a reviewed map. Changes follow `propose` → `decide` → record `started` → implement → record `implemented`, followed by selected checks when configured. Decisions check the exact candidate Markdown digest, latest revision, and tracked baseline. A note records the decision; it does not itself create permission.
+For new projects, `init` saves the reviewed initial map. For existing code, `scan` → `map-propose` → `map-decide` produces a reviewed map. Changes follow `propose` → `decide` → record `started` → implement and update documents → record `implemented --completion-json FILE`, followed by selected checks when configured. Decisions check the exact candidate Markdown digest, latest revision, and tracked baseline. A note records the decision; it does not itself create permission.
+
+New proposals declare affected project documents and exact module responsibility/contract updates, or a reason to retain the map. The same approval covers these updates. Closure requires file-level change descriptions and document review, synchronizes the accepted text into JSON/MD, and preserves the old map. Records retain start, completion and documentation-sync timestamps, before/after fingerprints, and filesystem modification times as observations. Missing historical times are left unknown. Older implemented plans can receive an appended documentation follow-up without rewriting earlier records. `handoff_ready` requires implementation and documentation closure with no tracked drift; it is separate from test results. The agent still needs to compare document meaning with source code.
 
 Keep transport JSON under the project's `.handoff/newbie-dev-buddy/inputs/` or in an external temporary directory so creating inputs does not invalidate scans. Earlier accepted maps and changes remain; renames and moves preserve module IDs, while splits, merges, and retirements require explicit lineage. Retired IDs cannot be recycled. Updating a map does not rewrite accepted changes or silently expand their tracked scope.
 

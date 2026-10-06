@@ -18,7 +18,7 @@
 | `map-render` | `--project P --expect-digest MODULES_JSON_SHA` | 保留不一致文件后，从选定 JSON 重建 MD；不接受手写意见 |
 | `propose` | `--project P --spec-json FILE` | 保存修改候选及冻结验证计划，分配新修订号 |
 | `decide` | `--project P --change C --revision N --decision accept\|reject --expect-digest SHA --note-file FILE` | 校验修改候选并保存决定 |
-| `record` | `--project P --change C --revision N --expect-digest SHA --event started\|implemented\|interrupted --note-file FILE` | 对已接受版本记录实施事件 |
+| `record` | `--project P --change C --revision N --expect-digest SHA --event started\|implemented\|interrupted\|documented --note-file FILE` | 对已接受版本记录事件；新实施或旧版文档补记需要 `--completion-json FILE` |
 | `run-checks` | `--project P --change C --revision N --expect-digest SHA --check-id ID` | 默认运行内置 Kit 的选中配置并核对结果；可重复 `--check-id`，可加 `--kit KIT_DIR` |
 | `verify` | `--project P --change C --revision N --expect-digest SHA --receipt REPORT_PATH` | 默认用内置 Kit 核对既有报告；可加 `--check-id ID` 绑定冻结检查，或加 `--kit KIT_DIR` |
 | `status` | `--project P` | 只读状态与本地内容指纹，不运行 Kit |
@@ -157,7 +157,14 @@ python3 scripts/newbie_dev_buddy.py init --project ./sample-project --map-json .
   "affected": [],
   "location": "export.write_table",
   "plan": "增加可选 columns 参数，仅允许 item_id 和 score 各一次。省略时保留原列顺序，并更新模块契约。",
-  "acceptance": "两种合法顺序的表头和数据一致；重复、遗漏、未知列返回明确错误。"
+  "acceptance": "两种合法顺序的表头和数据一致；重复、遗漏、未知列返回明确错误。",
+  "documentation": {
+    "files": ["docs/product.md"],
+    "map_updates": {
+      "M-EXPORT": {"contract": "export.write_table 使用 UTF-8。columns 可选，仅允许 item_id 和 score 各一次；省略时按 item_id、score 导出。"}
+    },
+    "map_reason": "导出选项已改变，需要同步正式约定和产品说明。"
+  }
 }
 ```
 
@@ -176,13 +183,28 @@ python3 scripts/newbie_dev_buddy.py decide --project ./sample-project --change C
 python3 scripts/newbie_dev_buddy.py record --project ./sample-project --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA --event started --note-file ./start-note.md
 ```
 
-完成实际代码与相关模块文档后：
+完成实际代码与声明的项目文档后，准备收尾 JSON（由助手填写）。`files` 必须覆盖跟踪范围内实际改变的文件，自动生成的地图对除外；`reviewed_documents` 仅用于说明声明了但无需修改的文档。不得用它忽略实际文档变化。
+
+```json
+{
+  "files": [
+    {"path": "src/export.py", "summary": "新增可选 columns，校验列名、重复与遗漏；缺省保留原列顺序。"},
+    {"path": "docs/product.md", "summary": "补充列选择的合法输入、缺省行为与错误示例。"}
+  ],
+  "reviewed_documents": {}
+}
+```
+
+已接受的 `documentation` 不能在收尾材料中替换；改变约定先修订方案。工具在收尾时更新两份正式地图并保留旧图，不需再确认同一已接受文字。
+
 
 ```sh
-python3 scripts/newbie_dev_buddy.py record --project ./sample-project --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA --event implemented --note-file ./implementation-note.md
+python3 scripts/newbie_dev_buddy.py record --project ./sample-project --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA --event implemented --completion-json ./completion.json --note-file ./implementation-note.md
 ```
 
 中断使用 `--event interrupted`，记录已改文件、当前行为、未完成部分及恢复步骤。更高修订被接受或旧版被 `supersedes` 替换后，旧版只供历史核对，不能继续实施或验收。
+
+旧版已实施方案的补记使用 `--event documented --completion-json FILE`；材料额外包含上面的 `documentation` 对象。只适用于缺少冻结文档计划的旧方案；原开始与实施记录必须存在，且不能补猜历史时间。详细规则见 [文档收尾与修改时间](workflow.md#文档收尾与修改时间)。
 
 ## 实际检查与既有报告复核
 
@@ -211,6 +233,6 @@ python3 scripts/newbie_dev_buddy.py status --project ./sample-project
 python3 scripts/newbie_dev_buddy.py refresh --project ./sample-project
 ```
 
-状态以本次变更为单位显示各模块或集成检查。`delivery_ready` 只表示已配置必需检查的当前证据门槛；无必需规则也不等于整项目通过。`refresh` 只重建索引，不接受漂移、不运行扫描或 Kit。
+状态以本次变更为单位显示各模块或集成检查、`documentation` 和 `handoff_ready`。文档收尾与源码漂移另行判断；可交接不代表验收通过。记录中的 `created`、`implementation_started_at` 与 `documentation.at` 是 UTC 记录时间，`file_changes` 的修改时间是文件系统观察值，不是可靠作者证据。`delivery_ready` 只表示已配置必需检查的当前证据门槛；无必需规则也不等于整项目通过。`refresh` 只重建索引，不接受漂移、不运行扫描或 Kit。
 
 地图更新不改写已接受版本的路径范围和历史记录，也不把整体报告升级成模块证据。

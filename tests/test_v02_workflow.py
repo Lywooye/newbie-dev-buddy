@@ -117,7 +117,8 @@ class MapWorkflowTests(unittest.TestCase):
         self.decide(self.candidate())
         spec = self.base / "spec.json"
         spec.write_text(json.dumps({"id": "C-1", "title": "Value", "primary": "M-DATA", "affected": [],
-                                    "location": "value", "plan": "Return 2", "acceptance": "Returns 2"}))
+                                    "location": "value", "plan": "Return 2", "acceptance": "Returns 2",
+                                    "documentation": {"files": [], "map_updates": {}, "map_reason": "Plain text format remains unchanged."}}))
         proposed = self.call("propose", "--spec-json", spec)
         adopted = self.call("decide", "--change", "C-1", "--revision", 1, "--expect-digest", proposed["digest"],
                             "--decision", "accept", "--note-file", self.note)

@@ -106,7 +106,8 @@ def replay(output):
     spec = {"id": "C-EXPORT", "title": "增加书签导出选项", "primary": "M-EXPORT",
             "affected": ["M-APP"], "location": "export.export_csv / app 的导出入口",
             "plan": "第一稿：把所有书签导出成 CSV，保留 title,url 表头。",
-            "acceptance": "三条样例书签都出现在 CSV 中，原始数据不变。"}
+            "acceptance": "三条样例书签都出现在 CSV 中，原始数据不变。",
+            "documentation": {"files": [], "map_updates": {}, "map_reason": "第一稿保留原有全量导出约定。"}}
     first = call("propose", "--spec-json", value_file("proposal-r1.json", spec))
     draft_path = project / first["path"]
     first_digest = hashlib.sha256(draft_path.read_bytes()).hexdigest()
@@ -115,6 +116,9 @@ def replay(output):
          note("request-revision", "先不要做。只导出 learning 标签；不传标签时保留全量导出，原始书签不能改变。"))
     spec.update(plan="第二稿：export_csv 增加可选 tag；入口增加 --tag。只筛选导出结果，不改书签数据或存储模块。",
                 acceptance="--tag learning 返回两条 learning 书签；无标签返回三条；不存在的标签只有表头；原始数据不变。")
+    spec["documentation"] = {"files": [], "map_reason": "导出与入口新增标签选项，同步登记约定；存储约定不变。",
+                             "map_updates": {"M-EXPORT": {"contract": "export_csv 接受可选 tag，仅筛选输出；保留 title,url 表头，不改原始数据。"},
+                                             "M-APP": {"contract": "入口接受 --tag；未传时全量导出，只向标准输出写 CSV，不覆盖文件。"}}}
     second = call("propose", "--spec-json", value_file("proposal-r2.json", spec))
     accepted = call("decide", "--change", "C-EXPORT", "--revision", second["revision"],
                     "--decision", "accept", "--expect-digest", second["digest"],
@@ -148,7 +152,10 @@ if __name__ == "__main__":
             or empty or not empty_csv.startswith("title,url")
             or (project / "data/bookmarks.json").read_bytes() != original_data):
         raise RuntimeError("The sample does not satisfy its accepted behavior.")
-    call("record", *common, "--event", "implemented", "--note-file",
+    completion = value_file("completion.json", {"files": [
+        {"path": "src/export.py", "summary": "增加可选 tag 参数，仅导出指定标签，保留 CSV 表头。"},
+        {"path": "src/app.py", "summary": "解析 --tag 参数并传给导出函数，保留标准输出。"}]})
+    call("record", *common, "--event", "implemented", "--completion-json", completion, "--note-file",
          note("implemented", "完成第二稿。实际运行三种导出并检查原始数据；此演示未接入 Kit，工具验收状态仍为未运行。"))
     resumed = call("status")  # A new CLI process reads records; no model conversation is simulated here.
     current = resumed["current"][0]

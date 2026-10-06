@@ -39,6 +39,12 @@ def map_body(mapping, *, candidate=False):
               "先核对各部分负责什么、怎样配合，再看下面的细节。这里保存的是已确认的安排。") +
              "模块安排不代表功能已经完成或测试已经通过。", "",
              "## 项目分工", "", "| 模块 | 负责什么 | 需要配合哪些模块 |", "|---|---|---|"]
+    if not candidate and mapping.get("updated_at"):
+        lines[4:4] = ["文档最后更新：" + mapping["updated_at"], ""]
+    if not candidate and mapping.get("last_change"):
+        last = mapping["last_change"]
+        lines[4:4] = ["本次同步对应：" + last["change"] + " r" + str(last["revision"]) +
+                      "；具体修改见 [`实施记录`](../../" + last["record"] + ")。", ""]
     for module in mapping["modules"]:
         dependencies = "、".join(reference(i, modules) for i in module.get("depends_on", [])) or "未声明模块依赖"
         lines.append("| " + " | ".join(cell(v) for v in
@@ -53,8 +59,11 @@ def map_body(mapping, *, candidate=False):
         lines += ["", "**代码位置**", ""] + ["- `" + p + "`" for p in module["paths"]]
         lines += ["", "路径可以是计划中的位置；路径存在也不能单独证明功能已完成。", "", "**怎样检查**", ""]
         lines += check_lines(module.get("verification", {}), default) + [""]
+        if module.get("last_change"):
+            last = module["last_change"]
+            lines += ["文档同步时间：" + last["at"] + "；对应修改：" + last["change"] + " r" + str(last["revision"]), ""]
         extras = {k: v for k, v in module.items() if k not in
-                  {"id", "name", "purpose", "contract", "paths", "depends_on", "verification"}}
+                  {"id", "name", "purpose", "contract", "paths", "depends_on", "verification", "last_change"}}
         if extras:
             lines += ["<details>", "<summary>其他已登记信息（保留原字段）</summary>", "", "```json", serialized(extras).rstrip(), "```", "", "</details>", ""]
     if mapping.get("integration_checks"):
@@ -68,7 +77,7 @@ def map_body(mapping, *, candidate=False):
         lines += ["## 确认时的说明", "", mapping["decision_note"], ""]
     extras = {k: v for k, v in mapping.items() if k not in
               {"title", "modules", "context", "verification_defaults", "integration_checks",
-               "decision_note", "schema", "map_revision", "source_scan", "source_scan_digest"}}
+               "decision_note", "schema", "map_revision", "source_scan", "source_scan_digest", "updated_at", "last_change"}}
     if extras:
         lines += ["<details>", "<summary>其他项目约定（保留原字段）</summary>", "", "```json",
                   serialized(extras).rstrip(), "```", "", "</details>", ""]

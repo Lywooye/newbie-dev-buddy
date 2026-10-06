@@ -118,6 +118,16 @@ def validate_map(data):
     require(isinstance(data, dict) and isinstance(data.get("modules"), list) and data["modules"], "modules must be nonempty")
     require(all(isinstance(m, dict) for m in data["modules"]), "each module must be an object")
     require("title" not in data or isinstance(data["title"], str), "title must be a string")
+    require("map_revision" not in data or type(data["map_revision"]) is int and data["map_revision"] >= 0, "invalid map revision")
+    for obj in [data] + data["modules"]:
+        if "updated_at" in obj:
+            require(isinstance(obj["updated_at"], str), "updated_at must be a timestamp string")
+        if "last_change" in obj:
+            last = obj["last_change"]
+            require(isinstance(last, dict) and set(last) == {"change", "revision", "at", "record"}, "invalid module change reference")
+            require(isinstance(last["change"], str) and re.fullmatch(CHANGE_ID, last["change"]) and
+                    type(last["revision"]) is int and last["revision"] > 0 and isinstance(last["at"], str), "invalid module change metadata")
+            require(isinstance(last["record"], str) and re.fullmatch(re.escape(STATE) + r"/records/C-[A-Za-z0-9_-]+-r[0-9]+-[0-9]{6}-[0-9a-f]{8}\.md", last["record"]), "invalid module record path")
     ids = [m.get("id") for m in data["modules"]]
     require(all(isinstance(i, str) and re.fullmatch(MODULE_ID, i) for i in ids), "invalid module ID")
     require(len(set(ids)) == len(ids), "duplicate module ID")
@@ -312,13 +322,16 @@ def current_inputs(root, data):
     return snapshot(root, data["tracked_paths"])
 
 
-def event(root, data, kind, note, **extra):
+def event(root, data, kind, note, *, stamp=None, relative=None, **extra):
     history = execution_events(root, data["id"], data["revision"])
     sequence = max((e[0]["sequence"] for e in history), default=0) + 1
+    inputs = current_inputs(root, data)
     metadata = {"id": data["id"], "revision": data["revision"], "sequence": sequence,
-                "event": kind, "created": now(), "inputs": current_inputs(root, data),
+                "event": kind, "created": stamp or now(), "inputs": inputs,
+                "file_mtimes": {p: datetime.fromtimestamp(safe(root, p).stat().st_mtime, timezone.utc).isoformat()
+                                for p, value in inputs.items() if value not in {"<directory>", "<missing>"}},
                 "accepted_digest": digest(safe(root, accepted_path(data["id"], data["revision"]))), **extra}
-    path = f"{STATE}/records/{data['id']}-r{data['revision']}-{sequence:06d}-{uuid.uuid4().hex[:8]}.md"
+    path = relative or f"{STATE}/records/{data['id']}-r{data['revision']}-{sequence:06d}-{uuid.uuid4().hex[:8]}.md"
     write(root, path, md(metadata, "# 执行记录\n\n" + note), new=True)
     return path
 
@@ -376,7 +389,7 @@ def status(root):
             item.update(decision="accept", path=adopted.relative_to(root).as_posix(), digest=digest(adopted))
             events = execution_events(root, data["id"], data["revision"])
             last = max((e[0] for e in events), key=lambda e: e["sequence"], default=None)
-            implementation = max((e[0] for e in events if e[0]["event"] != "verification"),
+            implementation = max((e[0] for e in events if e[0]["event"] not in {"verification", "documented"}),
                                  key=lambda e: e["sequence"], default=None)
             baseline = last["inputs"] if last else approved["baseline"]
             actual = current_inputs(root, approved)
@@ -397,6 +410,17 @@ def status(root):
                             receipt=check["receipt"], receipt_file_current=receipt.is_file() and digest(receipt) == check["receipt_digest"],
                             receipt_recheck_required=True)
             item["module_verification"] = verification_status(root, approved, events)
+            documentation = max((e[0] for e in events if "documentation" in e[0]),
+                                key=lambda e: e["sequence"], default=None)
+            item["documentation"] = (dict(documentation["documentation"]) if documentation else
+                                     {"state": "pending" if "documentation_plan" in approved else "legacy_unreviewed"})
+            if implementation and documentation and implementation["sequence"] > documentation["sequence"]:
+                item["documentation"]["state"] = "pending"
+            if item["drift"] and item["documentation"]["state"] == "synced":
+                item["documentation"]["state"] = "needs_review"
+            item["handoff_ready"] = item["execution"] == "implemented" and not item["drift"] and item["documentation"]["state"] == "synced"
+            if not item["handoff_ready"] and item["module_verification"]["delivery_ready"] is True:
+                item["module_verification"]["delivery_ready"] = False
             accepted_items.append(item)
         elif decision_path.exists():
             decision, _ = read_md(decision_path)
@@ -431,6 +455,12 @@ def refresh(root):
                  f"文档：[{item['path']}]({link(item['path'])})"]
         if item["decision"] == "accept":
             lines.append(f"实施：{item['execution']}；验收历史：{item['verification']}；输入变化：{', '.join(item['drift']) or '未发现（仅跟踪范围）'}")
+            lines.append("文档收尾：" + item["documentation"]["state"] + "；可交接：" + ("是（不代表验收通过）" if item["handoff_ready"] else "否"))
+            events = execution_events(root, item["id"], item["revision"])
+            if events:
+                meta, event_path = max(events, key=lambda e: e[0]["sequence"])
+                relative = event_path.relative_to(root).as_posix()
+                lines.append(f"最新记录时间：{meta['created']}；[具体修改记录]({link(relative)})")
             if item["replaced_by"]:
                 lines.append("旧方案已被替换（不再执行）：" + json.dumps(item["replaced_by"], ensure_ascii=False))
             verification = item["module_verification"]
@@ -543,7 +573,8 @@ def propose_map(root, args):
     coverage = {"unassigned": [p for p, ids in assignments.items() if not ids],
                 "overlapping": {p: ids for p, ids in assignments.items() if len(ids) > 1},
                 "excluded": inventory["excluded"]}
-    revision = max((d[0]["revision"] for d in map_drafts(root)), default=0) + 1
+    revision = max(previous.get("map_revision", 0) or 0,
+                   max((d[0]["revision"] for d in map_drafts(root)), default=0)) + 1
     relative = f"{STATE}/maps/drafts/MAP-r{revision}.md"
     metadata = {"schema": 1, "kind": "module-map", "revision": revision, "created": now(), "mapping": mapping,
                 "scan": args.scan, "scan_digest": digest(safe(root, args.scan)),
@@ -593,7 +624,7 @@ def decide_map(root, args):
     else:
         require(not safe(root, DOCS).exists(), "module documentation already exists without MODULES.md; inspect before accepting")
     data.update(decision="accept", decision_note=note, proposal_digest=args.expect_digest)
-    mapping = dict(mapping, schema=1, map_revision=args.revision, decision_note=note, source_scan=data["scan"],
+    mapping = dict(mapping, schema=1, map_revision=args.revision, updated_at=now(), decision_note=note, source_scan=data["scan"],
                    source_scan_digest=data["scan_digest"])
     created_folder = not safe(root, DOCS).exists()
     try:
@@ -626,7 +657,7 @@ def initialize(root, args):
     for path in mapping.get("context", []):
         safe(root, path)
     require(not safe(root, DOCS).exists(), "module documentation already exists; reuse it instead of overwriting")
-    mapping.update(schema=1, map_revision=0, decision_note=text_file(args.decision_note_file))
+    mapping.update(schema=1, map_revision=0, updated_at=now(), decision_note=text_file(args.decision_note_file))
     safe(root, DOCS + "/changes").mkdir(parents=True)
     try:
         write_module_map(root, mapping, new=True)
@@ -639,6 +670,127 @@ def initialize(root, args):
             folder.rmdir()
         raise
     return {"module_document": DOCS + "/MODULES.md", "module_data": DOCS + "/MODULES.json"}
+
+
+def documentation_plan(root, value, mapping, scope):
+    require(isinstance(value, dict), "documentation plan required: list affected documents and module contract updates")
+    require(set(value) == {"files", "map_updates", "map_reason"}, "documentation needs files, map_updates and map_reason")
+    require(isinstance(value["map_reason"], str) and value["map_reason"].strip(), "explain why module contracts change or stay unchanged")
+    files = value["files"]
+    require(isinstance(files, list) and all(isinstance(p, str) for p in files) and len(files) == len(set(files)), "documentation files must be unique paths")
+    for p in files:
+        safe(root, p)
+        require(not set(Path(p).parts) & SKIP and not p.startswith(DOCS + "/"), "list project documents, not generated Buddy records")
+        require(not safe(root, p).exists() or safe(root, p).is_file(), "documentation paths must be files")
+    updates = value["map_updates"]
+    require(isinstance(updates, dict) and set(updates) <= set(scope), "module documentation updates must stay in the accepted scope")
+    modules = {m["id"]: m for m in mapping["modules"]}
+    for identifier, fields in updates.items():
+        require(identifier in modules and isinstance(fields, dict) and fields and set(fields) <= {"purpose", "contract"},
+                "only purpose and contract can sync with implementation; structural changes need a map proposal")
+        require(all(isinstance(v, str) and v.strip() for v in fields.values()), "module documentation text must not be empty")
+        require(any(modules[identifier][k] != v for k, v in fields.items()), "module update does not change any registered text")
+    return value
+
+
+def implementation_start(events, latest_start):
+    previous = max((e[0]["sequence"] for e in events if e[0]["event"] == "implemented" and
+                    e[0]["sequence"] < latest_start["sequence"]), default=0)
+    return min((e[0] for e in events if e[0]["event"] == "started" and
+                previous < e[0]["sequence"] <= latest_start["sequence"]), key=lambda e: e["sequence"])
+
+
+def complete_implementation(root, args, data, started):
+    history = execution_events(root, data["id"], data["revision"])
+    started = implementation_start(history, started)
+    require(args.completion_json, "completion JSON required: document file changes and review before closing")
+    manifest = json_input(args.completion_json)
+    note = text_file(args.note_file)
+    require(isinstance(manifest, dict) and isinstance(manifest.get("files"), list), "completion needs a files array")
+    mapping = module_map(root)
+    allowed = {"files", "reviewed_documents"} | ({"documentation"} if "documentation_plan" not in data else set())
+    require(set(manifest) <= allowed, "completion contains unsupported fields; accepted documentation plan is frozen")
+    if "documentation_plan" in data:
+        require("documentation" not in manifest, "accepted documentation plan is frozen; revise the proposal to change it")
+        plan = data["documentation_plan"]
+        prior_docs = max((e[0] for e in execution_events(root, data["id"], data["revision"]) if "documentation" in e[0]),
+                         key=lambda e: e["sequence"], default=None)
+        expected_map = prior_docs["documentation"]["map_digest"] if prior_docs else data["map_digest"]
+        require(digest(safe(root, DOCS + "/MODULES.md")) == expected_map, "module map changed since the documentation plan; inspect and revise")
+    else:
+        # Legacy follow-up is explicitly recorded now, never backdated into the old plan.
+        plan = documentation_plan(root, manifest.get("documentation"), mapping, [data["primary"]] + data["affected"])
+    summaries = {}
+    for item in manifest["files"]:
+        require(isinstance(item, dict) and set(item) == {"path", "summary"}, "each changed file needs path and summary")
+        require(isinstance(item["path"], str) and isinstance(item["summary"], str) and item["summary"].strip(), "file change summary must not be empty")
+        require(item["path"] not in summaries, "duplicate changed file")
+        safe(root, item["path"])
+        summaries[item["path"]] = item["summary"]
+    actual = current_inputs(root, data)
+    automatic = {DOCS + "/MODULES.json", DOCS + "/MODULES.md"}
+    delta = [p for p in changed(started["inputs"], actual) if p not in automatic and
+             (started["inputs"].get(p) not in {None, "<directory>", "<missing>"} or actual.get(p) not in {None, "<directory>", "<missing>"})]
+    require(set(summaries) == set(delta), "file summaries must cover exactly the changed tracked files")
+    reviews = manifest.get("reviewed_documents", {})
+    require(isinstance(reviews, dict) and set(reviews) <= set(plan["files"]), "review only the declared project documents")
+    for p in plan["files"]:
+        require(safe(root, p).is_file(), "declared project document is missing")
+        require(p in delta or isinstance(reviews.get(p), str) and reviews[p].strip(), "unchanged document needs a concrete review reason")
+    stamp = now()
+    sequence = max((e[0]["sequence"] for e in execution_events(root, data["id"], data["revision"])), default=0) + 1
+    relative = f"{STATE}/records/{data['id']}-r{data['revision']}-{sequence:06d}-{uuid.uuid4().hex[:8]}.md"
+    previous = {p: safe(root, p).read_bytes().decode("utf-8") if safe(root, p).exists() else None for p in automatic}
+    module_changes = []
+    for module in mapping["modules"]:
+        fields = plan["map_updates"].get(module["id"])
+        if fields and any(module[k] != v for k, v in fields.items()):
+            module_changes.append({"id": module["id"], "before": {k: module[k] for k in fields}, "after": fields})
+            module.update(fields, last_change={"change": data["id"], "revision": data["revision"], "at": stamp, "record": relative})
+    updated = bool(module_changes)
+    if updated:
+        archive_module_map(root)
+        mapping.update(map_revision=max(mapping.get("map_revision", 0) or 0, max((d[0]["revision"] for d in map_drafts(root)), default=0)) + 1,
+                       updated_at=stamp, last_change={"change": data["id"], "revision": data["revision"], "at": stamp, "record": relative})
+    entries = []
+    for p in sorted(delta):
+        path = safe(root, p)
+        entries.append({"path": p, "summary": summaries[p], "before_sha256": started["inputs"].get(p) if started["inputs"].get(p) not in {None, "<missing>", "<directory>"} else None,
+                        "after_sha256": actual.get(p) if actual.get(p) not in {None, "<missing>", "<directory>"} else None, "before_mtime": started.get("file_mtimes", {}).get(p),
+                        "observed_mtime": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat() if path.is_file() else None})
+    implementation = max((e[0] for e in history if e[0]["event"] == "implemented"), key=lambda e: e["sequence"], default=None)
+    implementation_at = implementation["created"] if args.event == "documented" and implementation else stamp
+    body = note + f"\n\n## 修改时间与文件\n\n实施开始记录：{started['created']}\n\n实施完成记录：{implementation_at}\n\n本次文档收尾记录：{stamp}\n\n"
+    for item in entries:
+        body += f"- `{item['path']}`：{item['summary']}\n  文件系统修改时间（观察值）：{item['observed_mtime'] or '已删除；见先前指纹与时间'}\n"
+    body += "\n## 文档同步\n\n" + plan["map_reason"] + "\n"
+    for change in module_changes:
+        body += f"\n### {change['id']}\n"
+        for key in change["after"]:
+            body += f"\n原 {key}：\n\n{change['before'][key]}\n\n现 {key}：\n\n{change['after'][key]}\n"
+    for p in plan["files"]:
+        body += f"\n- `{p}`：" + ("已更新，具体修改见上方文件记录。" if p in delta else "已核对，保持原文：" + reviews[p]) + "\n"
+    try:
+        if updated:
+            write_module_map(root, mapping)
+        documentation = {"state": "synced", "at": stamp, "map_revision": mapping.get("map_revision"),
+                         "map_digest": digest(safe(root, DOCS + "/MODULES.md")), "map_action": "updated" if updated else "reviewed",
+                         "reason": plan["map_reason"], "files": {p: digest(safe(root, p)) for p in plan["files"]},
+                         "legacy_followup": "documentation_plan" not in data}
+        event(root, data, args.event, body, stamp=stamp, relative=relative, documentation=documentation,
+              file_changes=entries, module_changes=module_changes, implementation_started_at=started["created"], implementation_recorded_at=implementation_at)
+    except (OSError, ValueError):
+        if safe(root, relative).exists():
+            safe(root, relative).unlink()
+        if updated:
+            for p, text in previous.items():
+                if text is None:
+                    if safe(root, p).exists():
+                        safe(root, p).unlink()
+                elif not safe(root, p).exists() or safe(root, p).read_bytes().decode("utf-8") != text:
+                    write(root, p, text)
+        raise
+    return relative
 
 
 def propose(root, args):
@@ -661,18 +813,26 @@ def propose(root, args):
         accepted(root, previous["change"], previous["revision"])
     revision = max((d[0]["revision"] for d in drafts(root, change)), default=0) + 1
     scope = [primary] + affected
+    documentation = documentation_plan(root, spec.get("documentation"), mapping, scope)
     verification_plan = build_plan(mapping, scope)
     for check in verification_plan["checks"]:
         profile_files(check, root)
         check["config_digest"] = digest(safe(root, check["config"]))
         check["config_snapshot"] = config_for_check(check, root)
     check_paths = [p for c in verification_plan["checks"] for p in [c["config"]] + c["inputs"] + c["source_paths"]]
-    paths = sorted(set([DOCS] + mapping.get("context", []) + [p for m in scope for p in modules[m]["paths"]] + check_paths))
+    paths = sorted(set([DOCS] + mapping.get("context", []) + [p for m in scope for p in modules[m]["paths"]] + check_paths + documentation["files"]))
     metadata = {"schema": 1, "id": change, "revision": revision, "title": spec["title"],
                 "primary": primary, "affected": affected, "location": spec["location"],
                 "supersedes": supersedes, "created": now(), "tracked_paths": paths, "baseline": snapshot(root, paths),
-                "map_digest": digest(safe(root, DOCS + "/MODULES.md")), "verification_plan": verification_plan}
+                "map_digest": digest(safe(root, DOCS + "/MODULES.md")), "verification_plan": verification_plan, "documentation_plan": documentation}
     body = f"# {spec['title']}\n\n## 方案\n\n{spec['plan']}\n\n## 验收条件\n\n{spec['acceptance']}\n"
+    body += "\n## 同步更新哪些文档\n\n" + documentation["map_reason"] + "\n\n"
+    for p in documentation["files"]:
+        body += "- `" + p + "`\n"
+    for identifier, fields in documentation["map_updates"].items():
+        body += "\n### " + identifier + "\n"
+        for key, value in fields.items():
+            body += "\n" + ("职责" if key == "purpose" else "约定") + "改为：\n\n" + value + "\n"
     if verification_plan["checks"] or any(m["policy"] != "manual" for m in verification_plan["modules"]):
         body += "\n## 模块验收计划\n\n" + json.dumps(verification_plan, ensure_ascii=False, indent=2) + "\n"
     relative = draft_path(change, revision)
@@ -711,8 +871,17 @@ def record(root, args):
     require(not replacements(root, args.change, args.revision), "accepted revision has been replaced; use the current proposal")
     history = execution_events(root, args.change, args.revision)
     last = max((e[0] for e in history), key=lambda e: e["sequence"], default=None)
+    if args.event == "documented":
+        require("documentation_plan" not in data, "new plans must synchronize documents when recording implementation")
+        implementation = max((e[0] for e in history if e[0]["event"] not in {"verification", "documented"}),
+                             key=lambda e: e["sequence"], default=None)
+        require(implementation is not None and implementation["event"] == "implemented", "legacy documentation follow-up needs an implementation record")
+        started = max((e[0] for e in history if e[0]["event"] == "started"), key=lambda e: e["sequence"], default=None)
+        require(started is not None, "cannot reconstruct changes without an original start snapshot")
+        relative = complete_implementation(root, args, data, started)
+        return {"event": args.event, "path": relative}
     if args.event == "started":
-        require(last is None or last["event"] in {"interrupted", "implemented", "verification"}, "execution is already started")
+        require(last is None or last["event"] in {"interrupted", "implemented", "verification", "documented"}, "execution is already started")
         before = last["inputs"] if last else data["baseline"]
         after = current_inputs(root, data)
         if not last:
@@ -720,7 +889,10 @@ def record(root, args):
         require(not changed(before, after), "inputs changed since selected baseline; inspect and revise or restore before starting")
     else:
         require(last is not None and last["event"] == "started", "record started before implementation or interruption")
-    relative = event(root, data, args.event, text_file(args.note_file))
+    if args.event == "implemented" and "documentation_plan" in data:
+        relative = complete_implementation(root, args, data, last)
+    else:
+        relative = event(root, data, args.event, text_file(args.note_file))
     return {"event": args.event, "path": relative}
 
 
@@ -729,7 +901,7 @@ def verification_context(root, args):
     require(not replacements(root, args.change, args.revision), "accepted revision has been replaced; use the current proposal")
     history = execution_events(root, args.change, args.revision)
     last = max((e[0] for e in history), key=lambda e: e["sequence"], default=None)
-    require(last is not None and last["event"] in {"implemented", "verification"}, "record implemented before verification")
+    require(last is not None and last["event"] in {"implemented", "verification", "documented"}, "record implemented before verification")
     require(not changed(last["inputs"], current_inputs(root, data)), "inputs changed after implementation record")
     return data
 
@@ -861,7 +1033,8 @@ def main():
         if name in {"decide", "record"}:
             command.add_argument("--note-file", required=True)
         if name == "record":
-            command.add_argument("--event", choices=("started", "implemented", "interrupted"), required=True)
+            command.add_argument("--event", choices=("started", "implemented", "interrupted", "documented"), required=True)
+            command.add_argument("--completion-json")
         if name in {"verify", "run-checks"}:
             command.add_argument("--kit", help="trusted external Kit directory; defaults to bundled Acceptance Kit")
         if name == "verify":

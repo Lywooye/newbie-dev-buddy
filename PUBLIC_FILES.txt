@@ -41,6 +41,7 @@ tests/test_bundled_kit.py
 tests/test_codegraph_setup.py
 tests/test_demo.py
 tests/test_discovery.py
+tests/test_documentation_closure.py
 tests/test_install.py
 tests/test_map_adversarial.py
 tests/test_module_adversarial.py

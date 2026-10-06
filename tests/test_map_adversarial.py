@@ -179,7 +179,8 @@ class MapAdversarialTests(unittest.TestCase):
 
     def test_map_update_preserves_old_proposal_scope_and_blocks_stale_start(self):
         spec = {"id": "C-001", "title": "Synthetic old scope", "primary": "M-OLD", "affected": [],
-                "location": "value", "plan": "Update the old value.", "acceptance": "Old value updates."}
+                "location": "value", "plan": "Update the old value.", "acceptance": "Old value updates.",
+                "documentation": {"files": [], "map_updates": {}, "map_reason": "Stored value format is unchanged."}}
         proposal = self.call("propose", "--spec-json", self.json_file("change.json", spec))
         approved = self.call("decide", "--change", "C-001", "--revision", 1, "--decision", "accept",
                              "--expect-digest", proposal["digest"], "--note-file", self.note)

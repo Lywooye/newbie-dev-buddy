@@ -85,7 +85,8 @@ class BundledKitTests(unittest.TestCase):
         spec.write_text(json.dumps({"id": "C-001", "title": "Update stored value",
                                    "primary": "M-DATA", "affected": [], "location": "value",
                                    "plan": "Store new text without changing the format.",
-                                   "acceptance": "The stored and exported text equals new."}),
+                                   "acceptance": "The stored and exported text equals new.",
+                                   "documentation": {"files": [], "map_updates": {}, "map_reason": "UTF-8 text contract is unchanged."}}),
                         encoding="utf-8")
         proposal = self.call("propose", "--spec-json", spec, env=env)
         accepted = self.call("decide", "--change", "C-001", "--revision", 1,
@@ -95,7 +96,9 @@ class BundledKitTests(unittest.TestCase):
                      "--expect-digest", accepted["accepted_digest"]]
         self.call("record", *self.args, "--event", "started", "--note-file", self.note, env=env)
         self.write("src/value.txt", "new\n")
-        self.call("record", *self.args, "--event", "implemented", "--note-file", self.note,
+        completion = self.base / "completion.json"
+        completion.write_text(json.dumps({"files": [{"path": "src/value.txt", "summary": "Replace old stored text with new text."}]}))
+        self.call("record", *self.args, "--completion-json", completion, "--event", "implemented", "--note-file", self.note,
                   env=env)
 
     def run_checks(self, *args, code=0, env=None):

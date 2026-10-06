@@ -7,13 +7,17 @@ import tempfile
 import unittest
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import newbie_dev_buddy as buddy
+
+
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/newbie_dev_buddy.py"
 
 
 class WorkflowTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="newbie-dev-buddy-test-")
-        self.base = Path(self.temp.name)
+        self.base = Path(self.temp.name).resolve()
         self.project = self.base / "project"
         self.project.mkdir()
         (self.project / "src").mkdir()
@@ -33,6 +37,10 @@ class WorkflowTests(unittest.TestCase):
         self.temp.cleanup()
 
     def json_file(self, name, value):
+        if isinstance(value, dict) and "plan" in value and "primary" in value:
+            value = dict(value)
+            value.setdefault("documentation", {"files": [], "map_updates": {},
+                                               "map_reason": "The synthetic value change preserves the registered text format."})
         path = self.base / name
         path.write_text(json.dumps(value))
         return path
@@ -53,10 +61,22 @@ class WorkflowTests(unittest.TestCase):
         return self.call("decide", "--change", proposal["change"], "--revision", proposal["revision"],
                          "--decision", "accept", "--expect-digest", proposal["digest"], "--note-file", self.note)
 
+    def completion(self, proposal):
+        data, _ = buddy.accepted(self.project, proposal["change"], proposal["revision"])
+        events = buddy.execution_events(self.project, proposal["change"], proposal["revision"])
+        starts = [e[0] for e in events if e[0]["event"] == "started"]
+        before = buddy.implementation_start(events, starts[-1])["inputs"] if starts else data["baseline"]
+        after = buddy.current_inputs(self.project, data)
+        automatic = {buddy.DOCS + "/MODULES.json", buddy.DOCS + "/MODULES.md"}
+        paths = [p for p in buddy.changed(before, after) if p not in automatic and
+                 (before.get(p) not in {None, "<directory>", "<missing>"} or after.get(p) not in {None, "<directory>", "<missing>"})]
+        return self.json_file("completion.json", {"files": [{"path": p, "summary": "Synthetic fixture edit to " + p} for p in paths]})
+
     def record(self, proposal, adopted, event, ok=True):
+        completion = ["--completion-json", WorkflowTests.completion(self, proposal)] if event == "implemented" and ok else []
         return self.call("record", "--change", proposal["change"], "--revision", proposal["revision"],
                          "--expect-digest", adopted["accepted_digest"], "--event", event,
-                         "--note-file", self.note, ok=ok)
+                         "--note-file", self.note, *completion, ok=ok)
 
     def test_accepted_is_not_implemented_or_verified(self):
         result = self.accept(self.proposal())

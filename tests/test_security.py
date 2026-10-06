@@ -39,6 +39,8 @@ class SecurityRegressions(unittest.TestCase):
         self.temp.cleanup()
 
     def json_file(self, name, value):
+        if isinstance(value, dict) and "plan" in value and "primary" in value:
+            value = dict(value, documentation={"files": [], "map_updates": {}, "map_reason": "Synthetic value format is unchanged."})
         path = self.base / name
         path.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
         return path
@@ -74,7 +76,7 @@ class SecurityRegressions(unittest.TestCase):
         for event in ("started", "implemented"):
             self.call("record", "--change", "C-001", "--revision", 1,
                       "--expect-digest", adopted["accepted_digest"], "--event", event,
-                      "--note-file", self.note)
+                      "--note-file", self.note, *(["--completion-json", self.json_file("completion.json", {"files": []})] if event == "implemented" else []))
         return proposal, adopted
 
     def kit(self, body=None):
