@@ -35,6 +35,7 @@ scripts/install.py
 scripts/newbie_dev_buddy.py
 scripts/record_demo.py
 scripts/verification.py
+tests/test_bundled_kit.py
 tests/test_codegraph_setup.py
 tests/test_demo.py
 tests/test_discovery.py
@@ -45,3 +46,12 @@ tests/test_security.py
 tests/test_v02_workflow.py
 tests/test_verification.py
 tests/test_workflow.py
+vendor/acceptance-kit/BUNDLE.json
+vendor/acceptance-kit/LICENSE
+vendor/acceptance-kit/README.md
+vendor/acceptance-kit/bin/acceptance.mjs
+vendor/acceptance-kit/docs/configuration.md
+vendor/acceptance-kit/lib/acceptance.mjs
+vendor/acceptance-kit/package.json
+vendor/acceptance-kit/test/cli.test.mjs
+vendor/acceptance-kit/test/security.test.mjs

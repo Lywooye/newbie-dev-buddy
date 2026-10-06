@@ -1,0 +1,25 @@
+{
+  "upstream_name": "Acceptance Kit",
+  "upstream_version": "0.1.2",
+  "bundle_revision": "newbie-dev-buddy-0.5.0",
+  "license": "MIT",
+  "distribution": "runtime subset; not a standalone npm release",
+  "patches": [
+    "Reject hardlinked source inputs and evidence files.",
+    "Use SIGKILL on timeout for the direct check process; descendants are not contained.",
+    "Adapt help example and configuration guidance to the runtime subset."
+  ],
+  "upstream_files": {
+    "package.json": "82840b075945f41b1e758c12967e80e1598331f60bee25abbc65b5571bc34efd",
+    "bin/acceptance.mjs": "2d8ad32fe511aa4760d9f34173d47bdf7b8f939ff240ceb6f7924ce3bc59a02a",
+    "lib/acceptance.mjs": "fb44b744fffdb2ab86dc9638193a6455f9acd41373828ad80c127a17a108e8d8",
+    "LICENSE": "52562668c46bfcbe16aaf4d933e172bf2271aa704f5d7ab5060c9be069e55d15",
+    "docs/configuration.md": "8727686391aeea9faac0742c40ece3fb4b9f72df81689dddb30db95add1d3413",
+    "test/cli.test.mjs": "4974c2b0db3ae57f1169e638205a951566fd625fcd160cad7c57fc7dd4bd69bc"
+  },
+  "files": {
+    "package.json": "82840b075945f41b1e758c12967e80e1598331f60bee25abbc65b5571bc34efd",
+    "bin/acceptance.mjs": "b7978154c032e6914d5a2747c436ae3c59894b3597f8aa7fba690bef08978ddb",
+    "lib/acceptance.mjs": "f47f2ed63a3969343cb3918cfc0bc286704e3f5fa88c3b21bdf12eb923e06d8e"
+  }
+}

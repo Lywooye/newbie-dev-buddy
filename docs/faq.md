@@ -28,15 +28,19 @@ Useful questions include: “What change will I observe? Which existing behavior
 
 ## Does Buddy review code or automatically find every problem?
 
-Buddy supports plan review and verification-evidence management. Your agent can inspect code to explain impact. With a trusted external Acceptance Kit, Buddy runs selected configurations, validates reports, and records module and integration results. It does not include a comprehensive code-review, vulnerability-scanning, or security-certification engine, and cannot guarantee that every problem is found.
+Buddy supports plan review and verification-evidence management. Your agent can inspect code to explain impact. When you choose verification, Buddy uses its bundled Acceptance Kit by default to run selected configurations, validate reports, and record module and integration results. It does not include a comprehensive code-review, vulnerability-scanning, or security-certification engine, and cannot guarantee that every problem is found.
 
 Configured Kit commands run with the caller's permissions. What they check depends on the actual configuration, tests, and coverage. Review these instead of relying only on a “passed” label.
 
 [Module and integration verification rules](../references/verification.md)
 
-## Must every module be checked? Can I use Buddy without Acceptance Kit?
+## Must every module be checked? Do I need to install Acceptance Kit separately?
 
-Module planning, plan decisions, and history do not require a Kit. For verification, set a project default, override module policies, and select integration checks. Buddy does not automatically install the Kit. Checks may be selected manually, triggered by an affected module, or required as delivery evidence under an accepted policy.
+No separate Kit Skill is needed: Buddy's basic installation includes the pinned Acceptance Kit runtime based on upstream 0.1.2 with local security patches. Installation does not execute it, install Node or npm packages, or start a service. Only `run-checks` and `verify` need Node.js 22+; module planning, plan decisions, and history can run without Node or network access.
+
+Verification remains optional and requires real configurations and tests. Set a project default, override module policies, and select integration checks. Checks may be selected manually, added for an affected module, or required as delivery evidence under an accepted policy. You can select a trusted compatible external Kit with `--kit`; an invalid explicit directory fails rather than falling back to the bundle.
+
+The bundle's security patches change `toolHash`. Recheck older external-Kit receipts with their original trusted `--kit` directory, or rerun checks with the bundle; old results are not automatically transferred. See the [configuration format](../vendor/acceptance-kit/docs/configuration.md) and [bundle source and patches](../vendor/acceptance-kit/BUNDLE.json).
 
 Missing configuration, unrun, partial, passed, failed, and stale evidence remain distinct. `status` reads records and fingerprints; it does not rerun tests. A historical pass cannot prove changed code still passes. `delivery_ready` reflects only configured gates for this change; it is `null` when there are no required rules, not a whole-project quality approval.
 
@@ -72,22 +76,22 @@ Describing existing structure and proposing a redesign are separate tasks. Scann
 |---|---|
 | Newbie Dev Buddy | Retain modules, plan revisions, decisions, implementation state, and verification-evidence relationships |
 | CodeGraph (optional) | Give the agent symbol, dependency, and impact clues; business modules still need review |
-| Acceptance Kit (optional) | Execute configured checks and provide reports that Buddy selects and validates |
+| Acceptance Kit (bundled; verification optional) | Execute configured checks and provide reports that Buddy selects and validates |
 | Git | Version code and documents; Buddy's rationale and state records can be versioned alongside them |
 
-Basic installation requires neither CodeGraph nor a Kit. Buddy's Markdown workflow records do not replace code version control.
+Basic installation includes the Kit runtime without running it. CodeGraph and verification are optional; no separate Kit installation is required. Buddy's Markdown workflow records do not replace code version control.
 
 ## Which coding agents are supported? Can I use Windows?
 
 The installer has adapters for Codex, Claude Code, Cursor, Windsurf/Cascade, Copilot CLI, WorkBuddy, CodeBuddy, OpenCode, pi, ZCode, DeepSeek Harness, and Trae. Path and configuration-fixture validation does not mean live model sessions were tested in every host. Check Skill discovery and actual invocation after installation.
 
-The core project workflow needs Python 3.9+ on macOS/Linux. On Windows, use the complete workflow inside WSL with the agent and tools in the same Linux environment. The PowerShell installation wrapper does not make the core workflow Windows-native.
+The core project workflow needs Python 3.9+ on macOS/Linux; `run-checks` and `verify` additionally need Node.js 22+. On Windows, use the complete workflow inside WSL with the agent and tools in the same Linux environment. The bundled Kit and PowerShell installation wrapper do not make the core workflow Windows-native.
 
 [Installation and limits](../README.md#requirements-and-installation) · [Agent support](../references/agent-support.md)
 
 ## Is it free? What does the demonstration prove?
 
-Buddy is open source under the MIT license and has no built-in paid account or service. Your coding agent, model, and external tools may have their own costs. Version 0.4.0 is experimental, and generated workflow prose is primarily Chinese.
+Buddy is open source under the MIT license and retains the bundled Kit's [MIT copyright and license notice](../vendor/acceptance-kit/LICENSE). There is no built-in paid account or service. Your coding agent, model, and external tools may have their own costs. Version 0.5.0 is experimental, and generated workflow prose is primarily Chinese.
 
 The bookmark demonstration uses scripted decisions, real CLI calls, a synthetic program modification, and actual export checks. It demonstrates reproducible revision and record handling for that sample, not production-project coverage, successful sessions in every agent, or superiority to other tools. It does not run a Kit or validate real model continuation across conversations.
 

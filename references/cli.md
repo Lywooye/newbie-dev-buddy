@@ -1,6 +1,6 @@
 # CLI 契约与合成示例
 
-工具为 `scripts/newbie_dev_buddy.py`，核心仅依赖 Python 3.9 及以上标准库。命令从 Skill 源目录调用；示例项目和内容均为合成材料。SHA、扫描文件名和版本号是参数角色示例，实际值从命令返回取得。
+工具为 `scripts/newbie_dev_buddy.py`，核心仅依赖 Python 3.9 及以上标准库。`run-checks` 和 `verify` 另需 Node.js 22+，默认使用随搭子安装的内置 Acceptance Kit；基础规划和记录不需要 Node、npm 或联网。命令从 Skill 源目录调用；示例项目和内容均为合成材料。SHA、扫描文件名和版本号是参数角色示例，实际值从命令返回取得。
 
 `map-json`、`spec-json` 是传输材料，建议放在项目 `.handoff/newbie-dev-buddy/inputs/` 或项目外临时目录，再用正确的调用路径读取。不要把这些生成文件写进正在扫描或验收的源码目录，以免使扫描自己过期。权威内容仍为 `MODULES.md` 和已保存的版本 Markdown。
 
@@ -17,12 +17,12 @@
 | `propose` | `--project P --spec-json FILE` | 保存修改候选及冻结验证计划，分配新修订号 |
 | `decide` | `--project P --change C --revision N --decision accept\|reject --expect-digest SHA --note-file FILE` | 校验修改候选并保存决定 |
 | `record` | `--project P --change C --revision N --expect-digest SHA --event started\|implemented\|interrupted --note-file FILE` | 对已接受版本记录实施事件 |
-| `run-checks` | `--project P --change C --revision N --expect-digest SHA --kit KIT_DIR --check-id ID` | 实际运行选中 Kit 配置并核对结果；可重复 `--check-id` |
-| `verify` | `--project P --change C --revision N --expect-digest SHA --kit KIT_DIR --receipt REPORT_PATH` | 核对既有报告；可加 `--check-id ID` 绑定具体冻结检查 |
+| `run-checks` | `--project P --change C --revision N --expect-digest SHA --check-id ID` | 默认运行内置 Kit 的选中配置并核对结果；可重复 `--check-id`，可加 `--kit KIT_DIR` |
+| `verify` | `--project P --change C --revision N --expect-digest SHA --receipt REPORT_PATH` | 默认用内置 Kit 核对既有报告；可加 `--check-id ID` 绑定冻结检查，或加 `--kit KIT_DIR` |
 | `status` | `--project P` | 只读状态与本地内容指纹，不运行 Kit |
 | `refresh` | `--project P` | 重建派生导航索引，不重新梳理代码 |
 
-`scan` 默认单文件上限为 262144 字节（256 KiB），当前需要 macOS/Linux 安全目录相对读取。Python 可提取 AST 符号与导入，其他语言只有清单；动态导入、运行时调用和排除项内容不在覆盖内。它不运行代码，不自动生成业务模块。`map-propose` 使用该清单和经源码核对的人工或 AI 分组结果；详细方法见 [discovery.md](discovery.md)。扫描文件及报告路径相对项目根解析；`--kit` 是可信外部 Kit 目录。
+`scan` 默认单文件上限为 262144 字节（256 KiB），当前需要 macOS/Linux 安全目录相对读取。Python 可提取 AST 符号与导入，其他语言只有清单；动态导入、运行时调用和排除项内容不在覆盖内。它不运行代码，不自动生成业务模块。`map-propose` 使用该清单和经源码核对的人工或 AI 分组结果；详细方法见 [discovery.md](discovery.md)。扫描文件及报告路径相对项目根解析。`--kit` 是可选的可信兼容外部 Kit 目录；未指定时使用内置版本，显式目录错误时失败，不回退。
 
 `map-decide` 与 `decide` 的 SHA 对应待决策候选的完整 Markdown。接受修改后返回 `accepted_digest`，`record`、`run-checks` 和 `verify` 使用已接受版本的 digest，不能假定接受前后相同。手工改写后不能只换 digest 当作原来已接受。
 
@@ -93,7 +93,7 @@
 }
 ```
 
-这是本工具的地图格式，不能直接当作 Kit 配置。先准备真实配置和测试；无 Kit 或无配置时省略 `config`、`steps`、`inputs`，并如实保留未配置状态。策略不产生测试，也不证明覆盖。
+这是本工具的地图格式，不能直接当作 Kit 配置。先按[Kit 配置格式](../vendor/acceptance-kit/docs/configuration.md)准备真实配置和测试；尚未配置检查时省略 `config`、`steps`、`inputs`，并如实保留未配置状态。内置运行时和策略不产生测试，也不证明覆盖。
 
 项目内不支持软链接、硬链接或特殊文件，如 FIFO。相对路径避免记录机器根目录，但输入与 Kit 结果仍可能包含私密信息；工具不自动匿名化。
 
@@ -185,18 +185,20 @@ python3 scripts/newbie_dev_buddy.py record --project ./sample-project --change C
 用户已选定检查或已确认策略授权运行后：
 
 ```sh
-python3 scripts/newbie_dev_buddy.py run-checks --project ./sample-project --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA --kit ./acceptance-kit --check-id module:M-EXPORT --check-id integration:ingest-export
+python3 scripts/newbie_dev_buddy.py run-checks --project ./sample-project --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA --check-id module:M-EXPORT --check-id integration:ingest-export
 ```
 
-这会执行每份选中配置的全部 Kit 步骤，不是沙箱；地图 `steps` 字段指定必须通过的证明步骤，不筛选执行命令。先核对 Kit、配置和命令，完整流程见 [verification.md](verification.md)。
+默认使用内置 Kit，需要 Node.js 22+。这会执行每份选中配置的全部 Kit 步骤，不是沙箱；地图 `steps` 字段指定必须通过的证明步骤，不筛选执行命令。命令拥有调用者权限并继承环境，共享依赖或绝对路径可能影响副本外的文件。先核对 Kit、配置和命令，完整流程见 [verification.md](verification.md)。
 
 项目已有流程生成报告后，只复核相应检查：
 
 ```sh
-python3 scripts/newbie_dev_buddy.py verify --project ./sample-project --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA --kit ./acceptance-kit --receipt .acceptance/example-run/report.json --check-id module:M-EXPORT
+python3 scripts/newbie_dev_buddy.py verify --project ./sample-project --change C-001 --revision REVISION --expect-digest ACCEPTED_MD_SHA --receipt .acceptance/example-run/report.json --check-id module:M-EXPORT
 ```
 
 报告路径相对项目根，也支持项目内绝对路径。必须是真实 Kit 报告。通过要求报告 `status` 为 `passed`，Kit `check` 返回 `current: true`、`issues: []`，且指定检查的配置、步骤与输入符合冻结计划。模块验收需至少一个 `tap` 或 `checks` 行为步骤提供非空证明，仅 `exit` 步骤不够；命令与输入匹配仍不是语义覆盖证明。
+
+以上两条命令可加 `--kit /path/to/acceptance-kit` 选择可信兼容外部版本。内置 Kit 基于上游 0.1.2 并附本地安全补丁，自报版本仍为 `0.1.2`；来源见 [BUNDLE.json](../vendor/acceptance-kit/BUNDLE.json)。补丁改变 `toolHash`，旧外置收据须指定原 `--kit` 复核，或用内置 Kit 重跑，不能直接登记为新内置版本通过。
 
 省略 `--check-id` 时只核对整体报告；整体报告通过不自动标记各模块通过。`verify` 不运行测试。`status` 不调用 Kit，显示历史结果、内容指纹及需复核提示；继续使用历史结论前再次 `verify`。
 

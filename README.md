@@ -71,7 +71,7 @@ python3 scripts/install.py --agent codex --dry-run
 python3 scripts/install.py --agent codex
 ```
 
-**Basic installation is the default:** it installs the Skill only. CodeGraph and Acceptance Kit are optional. If your existing installation belongs to a Skills manager, update it through that manager; the installer does not overwrite a different deployment.
+**Basic installation is the default:** it installs Buddy together with its bundled Acceptance Kit runtime. Module planning, plan review, and records need only Python; **Node.js 22+ is required only for `run-checks` and `verify`**. Installation does not run checks, install Node or npm packages, or start a service. You do not need a separate Acceptance Kit Skill. CodeGraph and running verification are optional. If your existing installation belongs to a Skills manager, update it through that manager; the installer does not overwrite a different deployment.
 
 Open the intended project in Codex, invoke `$newbie-dev-buddy`, and use one of the prompts above. Follow the installer's reported host steps and confirm the agent actually discovers the Skill before starting.
 
@@ -83,7 +83,7 @@ Run the installer without arguments in an interactive terminal for its setup wiz
 
 Buddy supports clearer structure and continued maintenance by making module boundaries, change impact, decisions, and verification scope explicit. The design and implementation still depend on your coding agent and your review. The CLI does not judge architecture quality, enforce code boundaries, authenticate human consent, or prevent direct edits outside the workflow.
 
-**v0.4.0 is experimental.** Evidence comes from synthetic workflows and small external-Kit examples. Real beginners' long-term architecture and maintenance outcomes, production-project effectiveness, and comparative performance have not yet been evaluated. A saved map or passing check is not a guarantee of good architecture, complete coverage, or overall project quality.
+**v0.5.0 is experimental.** Evidence comes from synthetic workflows and small Kit examples. Real beginners' long-term architecture and maintenance outcomes, production-project effectiveness, and comparative performance have not yet been evaluated. A saved map or passing check is not a guarantee of good architecture, complete coverage, or overall project quality.
 
 Review here means reviewing plans and managing verification evidence. Buddy does not include a comprehensive code-review, vulnerability-scanning, or security-certification engine. Generated workflow prose is currently Chinese; supplied names, contracts, plans, and notes retain their language.
 
@@ -112,15 +112,19 @@ See [CodeGraph setup and boundaries](references/codegraph.md) and [host-specific
 <details>
 <summary>Optional module and integration verification</summary>
 
-Use a **trusted compatible external Acceptance Kit** with real configurations and tests. Buddy does not automatically install it. The separate Kit **0.1.2 requires Node.js 22+**; Node and the Kit are optional for the base workflow.
+Buddy includes a pinned Acceptance Kit runtime based on upstream **0.1.2**, with local security patches. `run-checks` and `verify` use it by default; both require **Node.js 22+**. You still need real project configurations and tests, and verification is optional. Basic planning and records need neither Node nor network access.
+
+To use a trusted compatible external Kit, pass `--kit /path/to/acceptance-kit`; an invalid explicit path fails rather than falling back to the bundle. See the [configuration format](vendor/acceptance-kit/docs/configuration.md), [bundle source and patches](vendor/acceptance-kit/BUNDLE.json), and retained [MIT license](vendor/acceptance-kit/LICENSE). The bundled subset is part of Buddy, not a separate npm distribution; its Kit version remains `0.1.2`, while `BUNDLE.json` identifies the patched source.
 
 Set a project default policy and module overrides: `manual` means checks are chosen for each change, `on-change` adds checks for affected modules to the change's check plan under an accepted policy, and `required` makes them delivery-evidence gates. Integration checks cover interfaces or flows across at least two modules; independent module reports cannot replace this evidence.
 
 `propose` freezes the policy and check plan, configuration SHA and full JSON snapshot, required steps, and declared inputs. Configurations and configured source/test inputs must already exist and remain covered by the Kit; prepare new test files before proposing. Changing commands or configuration afterward requires a revised, accepted proposal. Add `.handoff/newbie-dev-buddy` to the Kit's `exclude` list without a trailing slash, so new records do not invalidate reports; do not exclude all relevant documentation.
 
-`run-checks` validates the frozen configuration, executes every step in each selected configuration, rechecks the report, and records the result. It runs with the caller's permissions and **is not a sandbox**. The plan's `steps` specify required evidence, not which commands execute. Inspect trusted commands before running them.
+`run-checks` validates the frozen configuration, executes every step in each selected configuration, rechecks the report, and records the result. It runs with the caller's permissions and **is not a sandbox**. Commands inherit the environment, and shared dependency directories or absolute paths can affect files outside the input copy. The plan's `steps` specify required evidence, not which commands execute. Inspect trusted commands before running them.
 
-`verify` invokes the supplied Kit's checker on an existing real report; it does not run project tests. Without a check ID, a validated overall report is historical evidence and does not mark every module as checked. At least one nonempty `tap` or `checks` behavior step must provide evidence; an exit-code-only step is insufficient for module verification. Checks still cannot prove test sufficiency or all business requirements.
+`verify` invokes the selected Kit's checker on an existing real report; it does not run project tests. Without a check ID, a validated overall report is historical evidence and does not mark every module as checked. At least one nonempty `tap` or `checks` behavior step must provide evidence; an exit-code-only step is insufficient for module verification. Checks still cannot prove test sufficiency or all business requirements.
+
+The bundle rejects hardlinked source and evidence files and sends `SIGKILL` to the direct check process when it times out; it does not guarantee termination of every descendant. These patches change the Kit's `toolHash`. Recheck earlier external-Kit receipts using their original `--kit` directory, or rerun checks with the bundle; an old receipt is not automatically a pass for the new runtime.
 
 Missing configuration, unrun, partial, passed, failed, and stale evidence remain distinct. `status` reads events and local fingerprints; it does not rerun checks. Recheck historical evidence with `verify` before relying on it. Map, input, or report changes can make earlier evidence stale.
 
@@ -151,6 +155,6 @@ Parameter errors exit with code `1`; completed failed or stale verification exit
 python3 -m unittest discover -s tests -v
 ```
 
-Tests use temporary synthetic projects and simulated decisions. CI runs the suite on Linux with Python 3.9 and 3.12; macOS/Windows CI checks installer fixtures and platform wrappers. Repository fixtures check the Kit protocol; external-Kit examples are separate from CI and do not establish production readiness or comparative performance.
+Tests use temporary synthetic projects and simulated decisions, including installing Buddy into an isolated host directory, running its bundled Kit with real Node, and rechecking actual receipts, failures, and stale evidence. CI is configured for the Python suite on Linux with Python 3.9 and 3.12 plus Node.js 22; bundled-runtime behavior and security tests on Linux and macOS with Node.js 22 and 24; and installer fixtures and platform wrappers on macOS and Windows. These tests do not establish production readiness, real beginners' long-term outcomes, or comparative performance.
 
-Licensed under [MIT](LICENSE).
+Licensed under [MIT](LICENSE). The bundled Acceptance Kit retains its own [MIT copyright and license notice](vendor/acceptance-kit/LICENSE).

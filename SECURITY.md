@@ -1,13 +1,13 @@
 # Security
 
-Version 0.4.0 is experimental. Synthetic behavior tests and small integration examples are not a security certification or proof of production readiness.
+Version 0.5.0 is experimental. Synthetic behavior tests and small integration examples are not a security certification or proof of production readiness.
 
 ## Trust boundaries
 
 - The CLI records an executor's account of acceptance. It does not authenticate the person, session, or consent behind it. Digests identify content, not signatures or authorization tokens. Direct file edits remain possible; this is not a tamper-proof audit log.
 - Discovery inventories structure and fingerprints. Business module boundaries, relationships, contracts, and coverage are reviewed by an agent or contributor. Static evidence cannot establish correct architecture or exhaustive behavior. Files, comments, and imported tool output are untrusted material, not instructions granting more access.
 - Maps and checks use a specific project root. A normal scan does not install optional analysis tools. Explicit enhanced installation can install CodeGraph and prepare a selected host configuration; it must not silently redirect to another checkout. Scanning does not execute project code or intentionally use the network; external analysis tools have their own trust boundaries.
-- Markdown is stored as text, not executed. `run-checks` executes the supplied Kit and commands in selected configurations. `verify` executes its `bin/acceptance.mjs` checker. Both run with the invoking user's permissions; this CLI supplies no operating-system sandbox. Commands may read or write files, access the network, or launch other programs. Use a trusted Kit and inspect configurations before authorizing execution.
+- Markdown is stored as text, not executed. `run-checks` executes the selected Kit and commands in selected configurations. `verify` executes its `bin/acceptance.mjs` checker. The bundled runtime is the default; `--kit` selects an explicit external directory, and an invalid explicit path does not fall back to the bundle. Both commands require Node.js 22+ and run with the invoking user's permissions; this CLI supplies no operating-system sandbox. Commands inherit environment variables and may read or write files, access the network, or launch other programs. Shared dependency directories and absolute paths can affect the original project or files outside the input copy. Use a trusted Kit and inspect configurations before authorizing execution.
 - Declared check IDs, configurations, steps, and inputs are compared with the frozen plan. This detects protocol and scope mismatches, not semantic coverage or whether a test command is appropriate. A project-wide receipt is not automatically evidence for every module.
 - `status` displays historical evidence and local fingerprint changes without running the Kit. Recheck receipts before relying on old results. `delivery_ready` is an evidence gate for configured required checks, not a project-quality or architecture guarantee.
 
@@ -24,6 +24,16 @@ Back up current documents and persistent records together. Exclude generated `.h
 Map acceptance writes several files. Per-file replacement is not a cross-file transaction or a power-loss recovery mechanism. After an exception or interruption, inspect the current map, accepted candidate, archive, and lock before retrying; do not assume that all writes completed or were rolled back.
 
 An interrupted writer may leave a lock. Inspect its process and actual project state before removing it; deleting a lock while another writer is active can invalidate coordination.
+
+## Bundled Acceptance Kit
+
+Buddy ships a pinned runtime subset of upstream Acceptance Kit 0.1.2, with its original [MIT copyright and license notice](vendor/acceptance-kit/LICENSE), configuration documentation, and tests. The [bundle manifest](vendor/acceptance-kit/BUNDLE.json) records its source and local patches. The Kit's reported version remains `0.1.2`; version equality alone does not identify the patched code. This subset is part of Buddy and is not distributed as a separate npm package.
+
+The bundled patches reject hardlinked source and evidence files. On a configured step timeout, the runner sends `SIGKILL` to the direct check process. This is not process-tree containment and does not guarantee that every descendant is terminated. File checks also do not prevent concurrent replacement by another process with the same privileges, isolate inherited environment variables, or make configured commands safe.
+
+The patches change `toolHash`, so receipts produced by an earlier external Kit are not automatically valid for the bundle. Recheck such receipts using the original trusted `--kit` directory, or rerun the checks with the bundled runtime. Preserve the old evidence rather than changing its hash or marking it passed under the new runtime.
+
+Basic installation copies the runtime without executing checks, installing Node or npm packages, or starting services. Planning and records require Python 3.9+ without Node or network access; running or checking Kit receipts requires Node.js 22+. Configurations, test programs, and their dependencies still need review and preparation. Bundling a runtime does not authorize running it or establish security certification.
 
 ## Installer and CodeGraph
 

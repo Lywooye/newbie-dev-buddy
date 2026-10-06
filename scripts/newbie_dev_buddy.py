@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -658,10 +659,31 @@ def selected_check(data, check_id):
     return found
 
 
-def kit_entry(value):
-    kit = Path(value).expanduser().resolve() / "bin/acceptance.mjs"
+def kit_entry(value=None):
+    require(value is None or isinstance(value, str) and bool(value), "explicit --kit directory must not be empty")
+    kit_root = (Path(value).expanduser().resolve() if value is not None else
+                Path(__file__).resolve().parents[1] / "vendor/acceptance-kit")
+    kit = kit_root / "bin/acceptance.mjs"
     require(kit.is_file(), "Acceptance Kit entrypoint not found")
+    if value is None:
+        bundle = json.loads(safe(kit_root, "BUNDLE.json").read_text(encoding="utf-8"))
+        files = bundle.get("files") if isinstance(bundle, dict) else None
+        require(isinstance(files, dict) and set(files) ==
+                {"package.json", "bin/acceptance.mjs", "lib/acceptance.mjs"},
+                "invalid bundled Acceptance Kit manifest")
+        require(all(digest(safe(kit_root, name)) == expected for name, expected in files.items()),
+                "bundled Acceptance Kit changed; restore the package or explicitly select a trusted --kit")
     return kit
+
+
+def node_runtime():
+    node = shutil.which("node")
+    require(node is not None, "Acceptance Kit verification requires Node.js 22+; install it in the same environment")
+    completed = subprocess.run([node, "--version"], capture_output=True, text=True, timeout=10)
+    version = re.fullmatch(r"v(\d+)\.\d+\.\d+", completed.stdout.strip())
+    require(completed.returncode == 0 and version is not None and int(version.group(1)) >= 22,
+            "Acceptance Kit verification requires Node.js 22+; basic planning and records do not require Node.js")
+    return node
 
 
 def verify(root, args):
@@ -676,10 +698,11 @@ def verify(root, args):
     receipt = safe(root, receipt_path.as_posix())
     require(receipt.is_file(), "receipt not found")
     kit = kit_entry(args.kit)
+    node = node_runtime()
     target = selected_check(data, args.check_id) if getattr(args, "check_id", None) else None
     before = current_inputs(root, data)
     receipt_before = digest(receipt)
-    completed = subprocess.run(["node", str(kit), "check", "--project", str(root), "--receipt", str(receipt)],
+    completed = subprocess.run([node, str(kit), "check", "--project", str(root), "--receipt", str(receipt)],
                                capture_output=True, text=True, timeout=60)
     check = json.loads(completed.stdout)
     report = json.loads(receipt.read_text(encoding="utf-8"))
@@ -702,6 +725,7 @@ def run_checks(root, args):
     require(len(args.check_id) == len(set(args.check_id)), "duplicate check ID")
     selections = [selected_check(data, i) for i in args.check_id]
     kit = kit_entry(args.kit)
+    node = node_runtime()
     # Validate every requested configuration before executing any of its commands.
     for target in selections:
         profile_files(target, root)
@@ -709,7 +733,7 @@ def run_checks(root, args):
     for target in selections:
         before = current_inputs(root, data)
         timeout = 60 + sum(s.get("timeoutMs", 180000) / 1000 for s in config_for_check(target, root)["steps"])
-        completed = subprocess.run(["node", str(kit), "run", "--project", str(root), "--config", target["config"]],
+        completed = subprocess.run([node, str(kit), "run", "--project", str(root), "--config", target["config"]],
                                    capture_output=True, text=True, timeout=timeout)
         require(not changed(before, current_inputs(root, data)), "inputs changed during check execution")
         receipts = re.findall(r"^(?:passed|failed|incomplete): (.+)$", completed.stdout, re.MULTILINE)
@@ -755,7 +779,7 @@ def main():
         if name == "record":
             command.add_argument("--event", choices=("started", "implemented", "interrupted"), required=True)
         if name in {"verify", "run-checks"}:
-            command.add_argument("--kit", required=True)
+            command.add_argument("--kit", help="trusted external Kit directory; defaults to bundled Acceptance Kit")
         if name == "verify":
             command.add_argument("--receipt", required=True)
             command.add_argument("--check-id")

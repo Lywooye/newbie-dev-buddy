@@ -1,0 +1,23 @@
+{
+  "name": "@local/acceptance-kit",
+  "version": "0.1.2",
+  "description": "Local evidence-based project acceptance with frozen inputs and reproducible receipts",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "bin": { "acceptance-kit": "bin/acceptance.mjs" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "demo": "node bin/acceptance.mjs run --project examples/node",
+    "package": "node scripts/package.mjs"
+  },
+  "files": [
+    "bin/acceptance.mjs", "lib/acceptance.mjs",
+    "examples/node/acceptance.config.json", "examples/node/invoice.mjs", "examples/node/export.mjs", "examples/node/test/invoice.test.mjs",
+    "examples/python/acceptance.config.json", "examples/python/analysis.py", "examples/python/verify.py",
+    "docs/configuration.md", "docs/share-with-ai.md", "docs/release-validation.md",
+    "test/cli.test.mjs", "test/package.test.mjs",
+    "README.md", "LICENSE", "CHANGELOG.md", "scripts/package.mjs", "SHA256SUMS"
+  ],
+  "publishConfig": { "access": "restricted" }
+}
